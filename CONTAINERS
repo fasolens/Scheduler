@@ -1,0 +1,49 @@
+In the files/ folders, you will find some scripts that help you set up a container quickly.
+They are the scripts that will be run by the scheduler to deploy, start and stop an experiment.
+
+Install this file hierarchy on your node.
+
+# First, create an empty file system of the size you need, e.g. 100M
+
+dd if=/dev/zero of=myexp.img bs=1M count=10
+yes | mkfs myexp.img
+
+# Now, bzip that empty file system image, since that is what the scripts expect to get from the scheduler.
+
+bzip2 myexp.img
+
+# Now, on your node, you can install run the standard scripts used by the scheduler 
+# !! Make sure that container-* and /var/lib/lxc/default/config are unpacked to the correct locations. !!
+
+./container-deploy.sh myexp myexp.img.bz2
+
+# Run the container
+
+./container-start.sh myexp
+
+# Attach to the container
+
+lxc-attach -n myexp
+
+# Now you are actually inside the container. You can confirm this by running 'ps afx', which should only show a very few processes (those running inside the container).
+# If you need name resolution, you actually need to re-create a resolv.conf
+
+rm /etc/resolv.conf
+echo 'nameserver 8.8.8.8' > /etc/resolv.conf
+
+
+---- 
+Now you can install whatever you need inside the container file system.
+
+You should be able to put any experiment startup scripts into the containers init system, that is a systemd control file in /lib/systemd/system/...
+I have not yet tested that.
+
+When you are done, just exit the container (type exit or ctrl-d), run
+
+./container-stop.sh myexp
+
+At this point, you can run
+
+./container-start.sh myexp
+
+to start your experiment, or bzip2 your container image again to create a container image which can be run by the scheduler.
