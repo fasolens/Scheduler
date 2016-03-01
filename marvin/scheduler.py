@@ -78,13 +78,13 @@ class Scheduler:
                     "Status"] == u'TESTING' else NODE_DISABLED
             c.execute(
                 "UPDATE nodes SET hostname = ?, status = ? WHERE id = ?",
-                (node["HostName"],
+                (node.get("Hostname",node.get("HostName")),
                  status,
                  node["NodeId"]))
             c.execute(
                 "INSERT OR IGNORE INTO nodes VALUES (?, ?, ?, ?)",
                 (node["NodeId"],
-                 node["HostName"],
+                 node.get("Hostname",node.get("HostName")),
                     status,
                     0))
             c.execute(
