@@ -142,7 +142,7 @@ class Schedule:  # allocate
                     )
         else:
             schedid = resource[1:]
-            tasks = rest_api.scheduler.get_schedule(schedid=schedid)
+            tasks = rest_api.scheduler.get_schedule(schedid=schedid, past=True)
 
         if tasks is None:
             web.ctx.status = '404 Not Found'
