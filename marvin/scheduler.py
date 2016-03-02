@@ -475,7 +475,10 @@ SELECT DISTINCT * FROM (
         # TODO: any time this is called, check existing recurrent experiments
         #       for extension. This should be a quick check.
 
-        start, stop = int(start), int(stop)
+        try:
+            start, stop = int(start), int(stop)
+        except Exception as ex:
+            return None, "Start and stop times must be Unix timestamps."
         c = self.db().cursor()
         # confirm userid
         c.execute("SELECT id FROM owners WHERE id = ?", (user,))
