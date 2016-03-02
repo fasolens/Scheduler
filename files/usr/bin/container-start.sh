@@ -39,7 +39,7 @@ if [ ! -z $PID ]; then
   ln -s /proc/$PID/ns/net /var/run/netns/monroe;
 
   # to execute any command within the monroe netns, use $MNS command
-  MNS=ip netns exec monroe;
+  MNS="ip netns exec monroe";
 
   # set container net_cls.classid foc accounting and quotas
   echo '0x00100001' > /sys/fs/cgroup/net_cls,net_prio/system.slice/monroe-${CID}.scope/net_cls.classid;
@@ -69,15 +69,17 @@ if [ ! -z $PID ]; then
   ### NETWORK INTERFACES #####################################
 
   # TODO: get these assigned by the scheduler
-  INTERFACES = "usb0 usb1 usb2 wlan0 eth0 lo";
+  INTERFACES="usb0 usb1 usb2 wlan0 eth0 lo";
   for IF in $INTERFACES; do
+      if [ -z "$(ip link|grep $IF)" ]; then continue; fi
+
       ip link add link $IF montmp type macvlan;
       ip link set montmp netns monroe;
-      $MNS ip link set montmp rename $IF;
+      $MNS ip link set montmp name $IF;
 
       # TODO: do a proper network configuration, or run multi inside the container
       $MNS ifconfig $IF up;
-      $MNS dhclient $IF;
+      $MNS multi_client -d;
    done
 
 else

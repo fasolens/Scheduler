@@ -4,6 +4,8 @@ set -e
 SCHEDID=$1
 CONTAINER_URL=$2
 
+ERROR_CONTAINER_NOT_FOUND=100
+
 # TODO: Check if we have sufficient resources to deploy this container.
 # If not, return an error code to delay deployment.
 
@@ -15,7 +17,7 @@ if (( "$DISKSPACE" < $(( 2000000 + $DISKQUOTA )) )); then
     exit 1;
 fi
 
-docker pull $CONTAINER_URL
+docker pull $CONTAINER_URL || exit $ERROR_CONTAINER_NOT_FOUND
 docker tag -f $CONTAINER_URL monroe-$SCHEDID
 
 mkdir -p /outdir/$SCHEDID
