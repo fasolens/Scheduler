@@ -69,7 +69,7 @@ if [ ! -z $PID ]; then
   ### NETWORK INTERFACES #####################################
 
   # TODO: get these assigned by the scheduler
-  INTERFACES="usb0 usb1 usb2 wlan0 eth0 lo";
+  INTERFACES="usb0 usb1 usb2 wlan0 eth0";
   for IF in $INTERFACES; do
       if [ -z "$(ip link|grep $IF)" ]; then continue; fi
 
