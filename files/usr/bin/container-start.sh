@@ -4,6 +4,8 @@ set -e
 SCHEDID=$1
 CONTAINER=monroe-$SCHEDID
 
+ERROR_CONTAINER_DID_NOT_START=10
+
 # make sure network namespaces are set up
 mkdir -p /var/run/netns
 # make sure our cgroup is setup
@@ -21,6 +23,11 @@ docker run -d --cgroup-parent=monroe\
 
 # CID: the runtime container ID
 CID=$(docker ps --no-trunc | grep $CONTAINER | awk '{print $1}')
+
+if [ -z "$CID" ]; then
+    exit $ERROR_CONTAINER_DID_NOT_START;
+fi
+
 # PID: the container process ID
 PID=$(docker inspect -f '{{.State.Pid}}' $CID)
 
