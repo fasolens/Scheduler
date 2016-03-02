@@ -20,7 +20,9 @@ fi
 docker pull $CONTAINER_URL || exit $ERROR_CONTAINER_NOT_FOUND
 docker tag -f $CONTAINER_URL monroe-$SCHEDID
 
-mkdir -p /outdir/$SCHEDID
-dd if=/dev/zero of=/outdir/${SCHEDID}.disk bs=1000 count=$DISKQUOTA
-mkfs /outdir/${SCHEDID}.disk
-mount -o loop /outdir/${SCHEDID}.disk /outdir/${SCHEDID}
+if [ ! -d /outdir/$SCHEDID ]; then 
+    mkdir -p /outdir/$SCHEDID;
+    dd if=/dev/zero of=/outdir/${SCHEDID}.disk bs=1000 count=$DISKQUOTA;
+    mkfs /outdir/${SCHEDID}.disk;
+    mount -o loop /outdir/${SCHEDID}.disk /outdir/${SCHEDID};
+fi
