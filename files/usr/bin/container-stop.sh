@@ -24,11 +24,12 @@ REF=$( docker images | grep $CONTAINER | awk '{print $3}' )
 docker rmi -f $REF
 
 # undo startup and deployment steps
-MNS=ip netns exec monroe
+MNS="ip netns exec monroe"
 
-$MNS ip link delete mon0
-$MNS ip link delete mon1
-$MNS ip link delete mon2
+INTERFACES="usb0 usb1 usb2 wlan0 eth0";
+for IF in $INTERFACES; do
+  $MNS ip link delete $IF;
+done
 
 ip netns delete monroe
 
