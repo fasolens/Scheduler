@@ -19,6 +19,9 @@ log = logging.getLogger('Scheduler')
 
 log.debug("Configuration loaded: " + str(config))
 
+ERROR_INSUFFICIENT_RESOURCES = "sc1"
+ERROR_PARSING_FAILED = "sc2"
+
 TASK_STATUS_CODES = [
     'defined', 'deployed', 'started', 'redeployed', 'restarted',
     'finished',
@@ -478,13 +481,15 @@ SELECT DISTINCT * FROM (
         try:
             start, stop = int(start), int(stop)
         except Exception as ex:
-            return None, "Start and stop times must be Unix timestamps."
+            return None, "Start and stop times must be Unix timestamps.", {
+                       "code": ERROR_PARSING_FAILED
+                   }
         c = self.db().cursor()
         # confirm userid
         c.execute("SELECT id FROM owners WHERE id = ?", (user,))
         owner = c.fetchone()
         if owner is None:
-            return None, "Unknown user."
+            return None, "Unknown user.", {}
         ownerid = owner['id']
 
         try:
@@ -494,7 +499,9 @@ SELECT DISTINCT * FROM (
                 opts = dict([opt.split("=")
                              for opt in options.split("&")]) if options else {}
             except Exception as ex:
-                return None, "options string could not be parsed. "+ex.message
+                return None, "options string could not be parsed. "+ex.message, {
+                           "code": ERROR_PARSING_FAILED
+                       }
 
         shared = 1 if opts.get('shared', 0) else 0
 
@@ -513,12 +520,12 @@ SELECT DISTINCT * FROM (
         type_require, type_reject = self.parse_node_types(nodetypes)
         if type_require is None:
             error_message = type_reject
-            return None, error_message
+            return None, error_message, {}
 
         try:
             intervals = self.get_recurrence_intervals(start, stop, opts)
         except SchedulerException as ex:
-            return None, ex.message
+            return None, ex.message, {}
         until = int(opts.get('until', 0))
 
 
@@ -541,9 +548,16 @@ SELECT DISTINCT * FROM (
                     len(nodes))
                 if len(nodes) < nodecount:
                     self.db().rollback()
-                    return None, "Only %s/%s nodes are available during " \
-                                 "interval %s (%s,%s)." % \
-                                 (len(nodes), nodecount, inum + 1, i[0], i[1])
+                    msg = "Only %s/%s nodes are available during " \
+                           "interval %s (%s,%s)." % \
+                           (len(nodes), nodecount, inum + 1, i[0], i[1])
+                    data = {"code": ERROR_INSUFFICIENT_RESOURCES,
+                            "available":len(nodes),
+                            "requested":nodecount,
+                            "start":i[0],
+                            "stop":i[1]}
+                    return None, msg, data
+
 
                 nodes = nodes[:nodecount]
                 for node in nodes:

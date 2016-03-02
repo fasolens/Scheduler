@@ -28,26 +28,25 @@ API_VERSION = "1.0"
 #       minor versions will increase after first deployment, and should not
 #       break compatibility with prior minor versions.
 
-
 def dumps(data):
     return json.dumps(data, sort_keys=True, indent='  ')
 
+def error(message, code=None, extra={}):
+    if code is not None:
+        extra["code"] = code
+    return dumps(dict({"message": message}, **extra))
 
 def set_headers(web):
     web.header('Content-type', 'application/json')
     web.header('API-Version', API_VERSION)
 
-
 class ApiServer(web.application):
-
     def run(self, port=config['rest_api']['port'], *middleware):
         fn = self.wsgifunc(*middleware)
         return web.httpserver.runsimple(fn, (config['rest_api']['address'],
                                              config['rest_api']['port']))
 
-
 class Version:
-
     def GET(self):
         set_headers(web)
         return dumps(API_VERSION)
@@ -60,7 +59,7 @@ class Resource:
         role = rest_api.get_role(web.ctx)
         if role is None:
             web.ctx.status = '401 Unauthorized'
-            return "Please present a valid SSL client certificate to access this information"
+            return error("Please present a valid SSL client certificate to access this information")
 
         data = None
         if nodeid in ["", "/"]:
@@ -79,7 +78,7 @@ class Resource:
 
         if data is None:
             web.ctx.status = '404 Not Found'
-            return "Could not find resource with this id."
+            return error("Could not find resource with this id.")
 
         set_headers(web)
         return dumps(data)
@@ -87,7 +86,7 @@ class Resource:
     def PUT(self, nodeid):
         if nodeid in ["", "/"]:
             web.ctx.status = '404 Not Found'
-            return "Updating collection not allowed."
+            return error("Updating collection not allowed.")
         nodeid = nodeid[1:]
         data = web.input()
 
@@ -97,13 +96,13 @@ class Resource:
                 result = rest_api.scheduler.set_node_types(nodeid,
                                                            data['type'])
                 if result is True:
-                    return "Node type set."
+                    return error("Node type set.")
                 else:
                     web.ctx.status = '404 Not Found'
-                    return result
+                    return error(result)
             else:
                 web.ctx.status = '401 Unauthorized'
-                return "You'd have to be an admin to do that"
+                return error("You'd have to be an admin to do that")
         elif role == scheduler.ROLE_NODE:
             now = int(time.time())
             rest_api.scheduler.set_heartbeat(nodeid, now)
@@ -111,9 +110,9 @@ class Resource:
             return dumps(data)
         else:
             web.ctx.status = '400 Bad Request'
-            return "Parameters missing: type\nIf you are a node, " \
-                   "you were identified as SSL_ID %s." % \
-                   web.ctx.env.get('HTTP_SSL_FINGERPRINT', None)
+            return error("Parameters missing: type\nIf you are a node, " \
+                         "you were identified as SSL_ID %s." % \
+                         web.ctx.env.get('HTTP_SSL_FINGERPRINT', None))
 
 # SCHEDULE ##################################################################
 
@@ -124,7 +123,7 @@ class Schedule:  # allocate
         role = rest_api.get_role(web.ctx)
         if role is None:
             web.ctx.status = '401 Unauthorized'
-            return "Please present a valid SSL client certificate to access this information"
+            return error("Please present a valid SSL client certificate to access this information")
 
         params = web.input()
         if resource in ["", "/"]:
@@ -146,7 +145,7 @@ class Schedule:  # allocate
 
         if tasks is None:
             web.ctx.status = '404 Not Found'
-            return "Could not find schedule entry with this id."
+            return error("Could not find schedule entry with this id.")
 
         set_headers(web)
         return dumps(tasks)
@@ -155,23 +154,23 @@ class Schedule:  # allocate
         role = rest_api.get_role(web.ctx)
         if role != scheduler.ROLE_NODE:
             web.ctx.status = '401 Unauthorized'
-            return "You'd have to be a node to do that"
+            return error("You'd have to be a node to do that")
         params = web.input()
         if 'status' not in params:
             web.ctx.status = '400 Bad Request'
-            return "Parameters missing (required: status)"
+            return error("Parameters missing (required: status)")
         elif schedid in ["", "/"]:
             web.ctx.status = '400 Bad Request'
-            return "Scheduling id missing."
+            return error("Scheduling id missing.")
         schedid = schedid[1:]
         if params['status'] in scheduler.TASK_STATUS_CODES:
             rest_api.scheduler.set_status(
                 schedid=schedid,
                 status=params['status'])
-            return "Ok."
+            return error("Ok.")
         else:
             web.ctx.status = '400 Bad Request'
-            return "Unknown status code."
+            return error("Unknown status code.")
 
 # EXPERIMENT ################################################################
 
@@ -182,7 +181,7 @@ class Experiment:
         role = rest_api.get_role(web.ctx)
         if role is None:
             web.ctx.status = '401 Unauthorized'
-            return "Please present a valid SSL client certificate to access this information"
+            return error("Please present a valid SSL client certificate to access this information")
 
         if task in ["", "/"]:
             tasks = rest_api.scheduler.get_experiments()
@@ -192,7 +191,7 @@ class Experiment:
 
         if tasks is None:
             web.ctx.status = '404 Not Found'
-            return "Could not find experiment with this id."
+            return error("Could not find experiment with this id.")
 
         set_headers(web)
         return dumps(tasks)
@@ -201,7 +200,7 @@ class Experiment:
         user, role = rest_api.get_user(web.ctx)
         if role != scheduler.ROLE_USER:
             web.ctx.status = '401 Unauthorized'
-            return "You'd have to be a user to do that."
+            return error("You'd have to be a user to do that.")
 
         params = {}
         try:
@@ -211,41 +210,41 @@ class Experiment:
         required = ['name', 'start', 'stop', 'nodecount', 'nodetypes', 'script']
         optional = ['options']
         if set(required).issubset(set(params.keys())):
-            alloc, error = rest_api.scheduler.allocate(
-                              user, params['name'],
-                              params['start'], params['stop'],
-                              params['nodecount'], params['nodetypes'],
-                              params['script'], params.get('options', ''))
+            alloc, errmsg, extra = rest_api.scheduler.allocate(
+                                   user, params['name'],
+                                   params['start'], params['stop'],
+                                   params['nodecount'], params['nodetypes'],
+                                   params['script'], params.get('options', ''))
             if alloc is not None:
                 web.header('Location', "/schedule/%i" % alloc)
                 web.ctx.status = '201 Created'
-                return "Allocated task %s." % alloc
+                return error("Allocated task %s." % alloc)
             else:
                 web.ctx.status = '409 Conflict'
-                return "Could not allocate. %s" % error
+                return error("Could not allocate. %s" % errmsg, extra=extra)
         else:
             web.ctx.status = '400 Bad Request'
-            return "Parameters missing " \
+            return error("Parameters missing " \
                    "(required: %s | optional: %s, provided: %s)." \
-                   % (str(required), str(optional), str(params.keys()))
+                   % (str(required), str(optional), str(params.keys())))
 
     def DELETE(self, expid):
         role = rest_api.get_role(web.ctx)
         if role not in [scheduler.ROLE_USER, scheduler.ROLE_ADMIN]:
             web.ctx.status = '401 Unauthorized'
-            return "You'd have to be a user or admin to do that"
+            return error("You'd have to be a user or admin to do that")
 
         if expid in ["", "/"]:
             web.ctx.status = '400 Bad Request'
-            return "Taskid missing."
+            return error("Taskid missing.")
         else:
             result = rest_api.scheduler.delete_experiment(expid[1:])
             log.debug("Delete result: %s rows deleted" % result)
             if result > 0:
-                return "Ok. Deleted task and scheduling entries."
+                return error("Ok. Deleted task and scheduling entries.")
             else:
                 web.ctx.status = '404 Not Found'
-                return "Could not find task id."
+                return error("Could not find task id.")
 
 # USER ######################################################################
 
@@ -256,7 +255,7 @@ class User:
         role = rest_api.get_role(web.ctx)
         if role is None:
             web.ctx.status = '401 Unauthorized'
-            return "Please present a valid SSL client certificate to access this information"
+            return error("Please present a valid SSL client certificate to access this information")
 
         data = None
         log.debug(userid)
@@ -273,7 +272,7 @@ class User:
 
         if data is None:
             web.ctx.status = '404 Not Found'
-            return "Could not find user with this id."
+            return error("Could not find user with this id.")
 
         set_headers(web)
         return dumps(data)
@@ -282,41 +281,41 @@ class User:
         role = rest_api.get_role(web.ctx)
         if role != scheduler.ROLE_ADMIN:
             web.ctx.status = '401 Unauthorized'
-            return "You'd have to be an admin to do that (%s, %s)" % \
-                   (role, scheduler.ROLE_ADMIN)
+            return error("You'd have to be an admin to do that (%s, %s)" % \
+                   (role, scheduler.ROLE_ADMIN))
 
         data = web.input()
         if "name" in data and "ssl" in data and "role" in data:
-            userid, error = rest_api.scheduler.create_user(
+            userid, errmsg = rest_api.scheduler.create_user(
                 data['name'], data['ssl'], data['role'])
             if userid is not None:
                 web.ctx.status = '201 Created'
                 web.header('Location', "/user/%i" % userid)
-                return "User %s created." % userid
+                return error("User %s created." % userid)
             else:
                 web.ctx.status = '409 Conflict'
-                return error
+                return error(errmsg)
         else:
             web.ctx.status = '400 Bad Request'
-            return "Parameters missing (name, ssl, role)."
+            return error("Parameters missing (name, ssl, role).")
 
     def DELETE(self, userid):
         role = rest_api.get_role(web.ctx)
         if role != scheduler.ROLE_ADMIN:
             web.ctx.status = '401 Unauthorized'
-            return "You'd have to be an admin to do that"
+            return error("You'd have to be an admin to do that")
 
         if userid in ["", "/"]:
             web.ctx.status = '400 Bad Request'
-            return "Userid missing."
+            return error("Userid missing.")
         else:
             result = rest_api.scheduler.delete_user(userid[1:])
             log.debug("Delete result: %s" % result)
             if result is True:
-                return "Ok. Deleted user, tasks and scheduling entries."
+                return error("Ok. Deleted user, tasks and scheduling entries.")
             else:
                 web.ctx.status = '404 Not Found'
-                return "Could not find user with that id."
+                return error("Could not find user with that id.")
 
 # BACKEND ###################################################################
 
@@ -342,13 +341,13 @@ class Backend:
 
         else:
             web.ctx.status = '404 Not Found'
-            return "Unknown request"
+            return error("Unknown request")
 
     def PUT(self, action):
         role = rest_api.get_role(web.ctx)
         if role != scheduler.ROLE_ADMIN:
             web.ctx.status = '401 Unauthorized'
-            return "You'd have to be an admin to do that"
+            return error("You'd have to be an admin to do that")
         pass
 
 
