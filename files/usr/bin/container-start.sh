@@ -79,8 +79,8 @@ if [ ! -z $PID ]; then
 
       # TODO: do a proper network configuration, or run multi inside the container
       $MNS ifconfig $IF up;
-      $MNS multi_client -d;
    done
+   $MNS multi_client -d;
 
 else
   exit 1;
