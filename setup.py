@@ -13,9 +13,7 @@ setup(
         'marvind    = marvin.marvind:main',
     ], },
     data_files = [
-      ('/etc/', ['files/etc/marvind.conf']), 
-      ('/etc/marvind/keys/', []),
-      ('/var/lib/lxc/default/', ['files/var/lib/lxc/default/config']),
+      ('/etc/', ['files/etc/marvind.conf']),
       ('/usr/bin/', ['files/usr/bin/container-stop.sh', 'files/usr/bin/container-start.sh', 'files/usr/bin/container-deploy.sh']),
       ('/lib/systemd/system/', ['files/lib/systemd/system/marvind.service']),
       ('/DEBIAN/', ['files/DEBIAN/postinst','files/DEBIAN/prerm']),
