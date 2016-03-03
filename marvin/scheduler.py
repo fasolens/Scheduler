@@ -421,7 +421,6 @@ AND id NOT IN (
                   nodetypes="", nodes=None, results=1):
         """find the next available slot given certain criteria"""
 
-        print "find_slot %s %s %s %s" % (nodecount, duration, start, nodetypes)
         start, duration, nodecount = int(start), int(duration), int(nodecount)
         period     = self.get_scheduling_period()
         start = max(start, period[0])
