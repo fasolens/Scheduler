@@ -132,12 +132,14 @@ class Schedule:  # allocate
                         stop = params.get('stop',0)
                     )
         elif resource == "/find":
+            selection = params.get('nodes','').split(',')
             tasks = rest_api.scheduler.find_slot(
-                        params.get('nodecount', 1),
-                        params.get('duration', 1),
-                        params.get('start', 0),
-                        params.get('nodetypes', ''),
-                        params.get('results', 1),
+                        nodecount = params.get('nodecount', 1),
+                        duration = params.get('duration', 1),
+                        start = params.get('start', 0),
+                        nodetypes = params.get('nodetypes', ''),
+                        results = params.get('results', 1),
+                        nodes = selection
                     )
         else:
             schedid = resource[1:]
