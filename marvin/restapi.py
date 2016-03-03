@@ -66,12 +66,12 @@ class Resource:
             data = rest_api.scheduler.get_nodes()
         else:
             path = nodeid.split("/")
-            if len(path) > 2 and path[2] == 'schedule':
+            if len(path) > 2 and path[2] == 'schedules':
                 data = rest_api.scheduler.get_schedule(nodeid=path[1])
             elif len(path) > 2 and path[2] == 'all':
                 data = {
-                  'schedule': rest_api.scheduler.get_schedule(nodeid=path[1]),
-                  'tasks': rest_api.scheduler.get_experiments(nodeid=path[1])
+                  'schedules': rest_api.scheduler.get_schedule(nodeid=path[1]),
+                  'experiments': rest_api.scheduler.get_experiments(nodeid=path[1])
                 }
             else:
                 data = rest_api.scheduler.get_nodes(nodeid=path[1])
@@ -216,9 +216,9 @@ class Experiment:
                                    params['nodecount'], params['nodetypes'],
                                    params['script'], params.get('options', ''))
             if alloc is not None:
-                web.header('Location', "/schedule/%i" % alloc)
+                web.header('Location', "/schedules/%i" % alloc)
                 web.ctx.status = '201 Created'
-                return error("Allocated task %s." % alloc)
+                return error("Allocated task %s." % alloc, extra=extra)
             else:
                 web.ctx.status = '409 Conflict'
                 return error("Could not allocate. %s" % errmsg, extra=extra)
@@ -263,7 +263,7 @@ class User:
             data = rest_api.scheduler.get_users()
         else:
             path = userid.split("/")
-            if len(path) > 2 and path[2] == 'schedule':
+            if len(path) > 2 and path[2] == 'schedules':
                 data = rest_api.scheduler.get_schedule(userid=path[1])
             elif len(path) > 2 and path[2] == 'experiments':
                 data = rest_api.scheduler.get_experiments(userid=path[1])
@@ -356,7 +356,7 @@ routes = (
   '/v1/resources(|/.*)', 'Resource',
   '/v1/users(|/.*)', 'User',
   '/v1/experiments(|/.*)', 'Experiment',
-  '/v1/schedule(|/.*)', 'Schedule',
+  '/v1/schedules(|/.*)', 'Schedule',
   '/v1/backend(/.*)', 'Backend',
 )
 

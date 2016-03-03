@@ -309,7 +309,8 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
             schedids = [dict(x)['id'] for x in c.fetchall()]
             experiments[i]['schedids'] = schedids
             experiments[i]['options'] = json.loads(task.get('options', '{}'))
-            del experiments[i]['recurring_until']
+            if 'recurring_until' in experiments[i]:
+                del experiments[i]['recurring_until']
         return experiments or None
 
     def get_scheduling_period(self):
@@ -569,7 +570,11 @@ SELECT DISTINCT * FROM (
             self.db().commit()
             return expid, "Created experiment %s on %s nodes " \
                           "as %s intervals." % \
-                          (expid, len(nodes), len(intervals))
+                          (expid, len(nodes), len(intervals)), {
+                            "experiment": expid,
+                            "nodecount": len(nodes),
+                            "intervals": len(intervals)
+                          }
         except db.Error as er:
             # NOTE: automatic rollback is triggered in case of an exception
             log.error(er.message)
