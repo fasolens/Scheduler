@@ -32,6 +32,7 @@ fi
 PID=$(docker inspect -f '{{.State.Pid}}' $CID)
 
 if [ ! -z $PID ]; then
+  echo "Started docker process $CID $PID."
   # named the container network namespace 'monroe'
   # TODO: for passive containers, start them in the existing namespace
   #       of the same name
@@ -83,7 +84,7 @@ if [ ! -z $PID ]; then
    $MNS multi_client -d;
 
 else
-  exit 1;
+  exit $ERROR_CONTAINER_DID_NOT_START;
 fi
 
 # TODO log status to sysevent and return a success value to the scheduler
