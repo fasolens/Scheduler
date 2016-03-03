@@ -389,7 +389,6 @@ AND id NOT IN (
     WHERE shared = 0 AND NOT ((s.stop < ?) OR (s.start > ?))
 )
                  """
-        print query
         c.execute(query, [NODE_ACTIVE] +
                   list(chain.from_iterable(type_require))+
                   list(chain.from_iterable(type_reject)) +
