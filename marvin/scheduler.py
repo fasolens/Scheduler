@@ -376,11 +376,11 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
 
         query = "\nSELECT DISTINCT id FROM nodes WHERE status = ? \n"
         for type_and in type_require:
-            or_clause = "(" + (["?"]*len(type_and)).join(" OR ") + ")"
+            or_clause = "(" + ", ".join(["?"]*len(type_and)) + ")"
             query += "  AND EXISTS (SELECT nodeid FROM node_type " \
                      "WHERE type IN "+or_clause+") \n"
         for type_and in type_reject:
-            or_clause = "(" + (["?"]*len(type_and)).join(" OR ") + ")"
+            or_clause = "(" + ", ".join(["?"]*len(type_and)) + ")"
             query += "  AND NOT EXISTS (SELECT nodeid FROM node_type "\
                      "WHERE type IN "+or_clause+") \n"
         query += """
@@ -389,6 +389,7 @@ AND id NOT IN (
     WHERE shared = 0 AND NOT ((s.stop < ?) OR (s.start > ?))
 )
                  """
+        print query
         c.execute(query, [NODE_ACTIVE] +
                   list(chain.from_iterable(type_require))+
                   list(chain.from_iterable(type_reject)) +
@@ -405,7 +406,7 @@ AND id NOT IN (
                     if len(t)>2 and t[0] == '-']
             type_require = [t.strip() for t in types
                     if len(t)>1 and t[0] != '-']
-            return type_require.split("|"), type_reject.split("|")
+            return [t.split("|") for t in type_require], [t.split("|") for t in type_reject]
         except Exception,ex:
             return None, "nodetype expression could not be parsed. "+ex.message
 
