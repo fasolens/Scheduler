@@ -306,11 +306,14 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         experiments = [dict(x) for x in taskrows]
         for i, task in enumerate(experiments):
             c.execute(
-                "SELECT id FROM schedule WHERE id=?",
+                "SELECT id, nodeid, status FROM schedule WHERE expid=?",
                 (experiments[i]['id'],
                  ))
-            schedids = [dict(x)['id'] for x in c.fetchall()]
-            experiments[i]['schedids'] = schedids
+            result = [dict(x) for x in c.fetchall()]
+            schedules = dict([(
+                           x['id'], { "status":x['status'], "nodeid": x['nodeid'] }
+                        ) for x in result])
+            experiments[i]['schedules'] = schedules
             experiments[i]['options'] = json.loads(task.get('options', '{}'))
             if 'recurring_until' in experiments[i]:
                 del experiments[i]['recurring_until']
