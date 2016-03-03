@@ -9,6 +9,7 @@ import threading
 from inventory import inventory_api
 import configuration
 import simplejson as json
+from itertools import chain
 
 config = configuration.select('marvinctld')
 
@@ -33,6 +34,8 @@ TASK_STATUS_CODES = [
 POLICY_TASK_DELAY = 60
 # task must be scheduled for a minimum of # seconds
 POLICY_TASK_MIN_RUNTIME = 5 * 60
+# task may not run for a maximum of # seconds
+POLICY_TASK_MAX_RUNTIME = 24 * 3600
 # recurrence may only happen with a minimum period of # seconds
 POLICY_TASK_MIN_RECURRENCE = 3600
 # scheduling may only happen # seconds in advance
@@ -337,6 +340,14 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
             raise SchedulerException(
                 "Tasks must run for a minimum of %i seconds." %
                 POLICY_TASK_MIN_RUNTIME)
+        if stop > start + POLICY_TASK_MAX_RUNTIME:
+            raise SchedulerException(
+                "Tasks may not run for more than %i seconds." %
+                POLICY_TASK_MAX_RUNTIME)
+        if start > now + POLICY_SCHEDULING_PERIOD:
+            raise SchedulerException(
+                "Tasks may not run be scheduled more than %s seconds in advance." %
+                POLICY_SCHEDULING_PERIOD)
 
         if recurrence is None:
             return [(start, stop)]
@@ -364,20 +375,24 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         c = self.db().cursor()
 
         query = "\nSELECT DISTINCT id FROM nodes WHERE status = ? \n"
-        for type_ in type_require:
+        for type_and in type_require:
+            or_clause = "(" + (["?"]*len(type_and)).join(" OR ") + ")"
             query += "  AND EXISTS (SELECT nodeid FROM node_type " \
-                     "WHERE type = ?) \n"
-        for type_ in type_reject:
+                     "WHERE type IN "+or_clause+") \n"
+        for type_and in type_reject:
+            or_clause = "(" + (["?"]*len(type_and)).join(" OR ") + ")"
             query += "  AND NOT EXISTS (SELECT nodeid FROM node_type "\
-                     "WHERE type = ?) \n"
+                     "WHERE type IN "+or_clause+") \n"
         query += """
 AND id NOT IN (
     SELECT DISTINCT nodeid FROM schedule s
     WHERE shared = 0 AND NOT ((s.stop < ?) OR (s.start > ?))
 )
                  """
-        c.execute(query, [NODE_ACTIVE] + type_require +
-                  type_reject + [start, stop])
+        c.execute(query, [NODE_ACTIVE] +
+                  list(chain.from_iterable(type_require))+
+                  list(chain.from_iterable(type_reject)) +
+                  [start, stop])
 
         noderows = c.fetchall()
         nodes = [dict(x) for x in noderows]
@@ -390,11 +405,11 @@ AND id NOT IN (
                     if len(t)>2 and t[0] == '-']
             type_require = [t.strip() for t in types
                     if len(t)>1 and t[0] != '-']
-            return type_require, type_reject
+            return type_require.split("|"), type_reject.split("|")
         except Exception,ex:
             return None, "nodetype expression could not be parsed. "+ex.message
 
-    def find_slot(self, nodecount=1, duration=1, start=0, 
+    def find_slot(self, nodecount=1, duration=1, start=0,
                   nodetypes="", results=1):
         """find the next available slot given certain criteria"""
 
