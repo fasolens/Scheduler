@@ -132,8 +132,9 @@ class Schedule:  # allocate
                         stop = params.get('stop',0)
                     )
         elif resource == "/find":
-            selection = params.get('nodes','').split(',')
-            tasks = rest_api.scheduler.find_slot(
+            nodes = params.get('nodes',None)
+            selection = nodes.split(",") if nodes is not None else None 
+            tasks, errmsg = rest_api.scheduler.find_slot(
                         nodecount = params.get('nodecount', 1),
                         duration = params.get('duration', 1),
                         start = params.get('start', 0),
@@ -141,6 +142,9 @@ class Schedule:  # allocate
                         results = params.get('results', 1),
                         nodes = selection
                     )
+            if tasks is None:
+                web.ctx.status = '409 Conflict'
+                return error(errmsg)
         else:
             schedid = resource[1:]
             tasks = rest_api.scheduler.get_schedule(schedid=schedid, past=True)

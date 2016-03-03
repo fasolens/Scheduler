@@ -378,7 +378,7 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         c = self.db().cursor()
 
         preselection = ""
-        if nodes is not None:
+        if nodes is not None and len(nodes)>0:
             preselection = " AND id IN ('" + "', '".join(nodes) + "') \n"
 
         query = "\nSELECT DISTINCT id FROM nodes WHERE status = ? \n"
@@ -451,7 +451,7 @@ SELECT DISTINCT * FROM (
 
             while segments[c]-s0 < duration:
                 if c==len(segments)-1:
-                    return []
+                    return [], None
                 c+=1
 
             nodes = self.get_available_nodes(nodes,
@@ -466,14 +466,14 @@ SELECT DISTINCT * FROM (
                     'nodetypes': nodetypes,
                 })
                 if len(slots)>=results:
-                  return slots
+                  return slots, None
             # TODO: ideally, we identify the segment where the conflict occurs
             # and skip until after this segment. until then, we just iterate.
 
             segments.pop(0)
 
         if len(slots)>0:
-            return slots
+            return slots, None
         else:
             return None, "Could not find available time slot "\
                          "matching these criteria."
