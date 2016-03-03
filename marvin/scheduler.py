@@ -369,7 +369,7 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         else:
             return []
 
-    def get_available_nodes(self, type_require, type_reject, start, stop):
+    def get_available_nodes(self, nodes, type_require, type_reject, start, stop):
         """ Select all active nodes not having a task scheduled between
             start and stopfrom the set of nodes matching type_accept and
             not type_reject
@@ -377,7 +377,12 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
 
         c = self.db().cursor()
 
+        preselection = ""
+        if nodes is not None:
+            preselection = " AND id IN ('" + "', '".join(nodes) + "') \n"
+
         query = "\nSELECT DISTINCT id FROM nodes WHERE status = ? \n"
+        query += preselection
         for type_and in type_require:
             or_clause = "(" + ", ".join(["?"]*len(type_and)) + ")"
             query += "  AND EXISTS (SELECT nodeid FROM node_type " \
@@ -392,6 +397,7 @@ AND id NOT IN (
     WHERE shared = 0 AND NOT ((s.stop < ?) OR (s.start > ?))
 )
                  """
+        print query
         c.execute(query, [NODE_ACTIVE] +
                   list(chain.from_iterable(type_require))+
                   list(chain.from_iterable(type_reject)) +
@@ -413,7 +419,7 @@ AND id NOT IN (
             return None, "nodetype expression could not be parsed. "+ex.message
 
     def find_slot(self, nodecount=1, duration=1, start=0,
-                  nodetypes="", results=1):
+                  nodetypes="", nodes=None, results=1):
         """find the next available slot given certain criteria"""
 
         print "find_slot %s %s %s %s" % (nodecount, duration, start, nodetypes)
@@ -428,6 +434,7 @@ AND id NOT IN (
             return "None", error_message
 
         # fetch all schedule segmentations (experiments starting or stopping)
+        # TODO: only take experiments matching [nodes, nodetypes] into account
         c = self.db().cursor()
         query = """
 SELECT DISTINCT * FROM (
@@ -449,7 +456,7 @@ SELECT DISTINCT * FROM (
                     return []
                 c+=1
 
-            nodes = self.get_available_nodes(
+            nodes = self.get_available_nodes(nodes,
                         type_require, type_reject, s0, segments[c])
             if len(nodes) >= nodecount:
                 slots.append({
@@ -484,12 +491,13 @@ SELECT DISTINCT * FROM (
         name        -- arbitrary identifier
         start, stop -- unix time stamp (UTC)
         nodecount   -- number of required nodes.
-        nodetypes   -- filter on node type (static,spain,-apu1)
+        nodetypes   -- filter on node type (static,spain|norway,-apu1)
         script      -- deployment URL to be fetched
         for the extra options, see README.md
         options     -- shared=1 (default 0)
                     -- recurrence, period, until
                     -- traffic_in, traffic_out, storage
+                    -- nodes (list of node ids)
                     -- interfaces
                     -- restart
         """
@@ -524,6 +532,10 @@ SELECT DISTINCT * FROM (
 
         shared = 1 if opts.get('shared', 0) else 0
 
+        preselection = None
+        if opts.get(u"nodes") is not None:
+            preselection = opts.get("nodes").split(",")
+
         deployment_keys = [
             'traffic_in',
             'traffic_out',
@@ -547,7 +559,6 @@ SELECT DISTINCT * FROM (
             return None, ex.message, {}
         until = int(opts.get('until', 0))
 
-
         try:
             c.execute("INSERT INTO experiments "
                       "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -555,7 +566,7 @@ SELECT DISTINCT * FROM (
                        until, json.dumps(opts)))
             expid = c.lastrowid
             for inum, i in enumerate(intervals):
-                nodes = self.get_available_nodes(
+                nodes = self.get_available_nodes(preselection,
                            type_require, type_reject, i[0], i[1])
 
 
@@ -573,6 +584,7 @@ SELECT DISTINCT * FROM (
                     data = {"code": ERROR_INSUFFICIENT_RESOURCES,
                             "available":len(nodes),
                             "requested":nodecount,
+                            "selection":preselection,
                             "start":i[0],
                             "stop":i[1]}
                     return None, msg, data

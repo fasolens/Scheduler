@@ -100,6 +100,7 @@ The following parameters are used to schedule an experiment:
 These are defined as scheduling options, interpreted by the scheduling server:
 
 * options   - (optional) additional scheduling options. (should we flatten the options?)
+    * nodes         - a specific list of node ids to select for scheduling
     * shared        - (default 0) 1 if this is a passive measurement experiment
     * recurrence    - (default 0) 'simple' for a basic recurrence model
     * period        - experiment will be repeated with this interval, in seconds
