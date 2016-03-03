@@ -32,7 +32,7 @@ recovered on restart.
       '/resources(|/.*)'   - node, type and status (GET, PUT)
       '/users(|/.*)'       - users (GET, POST, DELETE)
       '/experiments(|/.*)' - task definitions (GET, POST, DELETE)
-      '/schedule(|/.*)'   - scheduled tasks (GET, PUT)
+      '/schedules(|/.*)'   - scheduled tasks (GET, PUT)
       '/backend(/.*)'     - backend actions (various)
     )
 
@@ -41,7 +41,7 @@ recovered on restart.
   * resource   (a node, with a node/resource id)
   * user       (a user, with a user id)
   * experiment (the definition of a task to be run on one or more nodes, with id)
-  * schedule   (the n:m mapping of experiments to nodes, with id, start and stop time)
+  * schedules  (the n:m mapping of experiments to nodes, with id, start and stop time)
 
 #### Access levels:
 '#' is a placeholder for a node, task, user or scheduling id
@@ -55,16 +55,16 @@ for all authenticated clients:
 
   * GET resources
   * GET resources/#
-  * GET resources/#/schedule
+  * GET resources/#/schedules
   * GET resources/#/experiments
   * GET resources/#/all
   * GET users
   * GET users/#
-  * GET users/#/schedule
+  * GET users/#/schedules
   * GET users/#/experiments
-  * GET schedule?start=...&stop=...
-  * GET schedule/#
-  * GET schedule/find?nodecount=...&duration=...&start=...&nodetypes=...
+  * GET schedules?start=...&stop=...
+  * GET schedules/#
+  * GET schedules/find?nodecount=...&duration=...&start=...&nodetypes=...
   * GET experiments
   * GET experiments/#
 
@@ -81,9 +81,9 @@ only for administrators (role: admin)
 
 only for nodes (role: node)
 
-  * GET resources/#/schedule
+  * GET resources/#/schedules
   * PUT resources/#       [send heartbeat]
-  * PUT schedule/#        status=deployed|started|finished|failed
+  * PUT schedules/#        status=deployed|started|finished|failed
 
 ## Experiment and scheduling parameters:
 
@@ -93,7 +93,8 @@ The following parameters are used to schedule an experiment:
   * start     - a UNIX time stamp, the start time
   * stop      - a UNIX time stamp, the stop time
   * nodecount - the number of nodes to allocate this experiment to
-  * nodetypes - the type filter of required and rejected node types, e.g. "mobile,spain,-apu1"
+  * nodetypes - the type filter of required and rejected node types, e.g. "mobile,spain|norway,-apu1"
+                Supports the operators OR(|), NOT(-) and AND(,) in this strict order of precedence.
   * script    - the experiment to execute, currently in the form of a docker pull URL
 
 These are defined as scheduling options, interpreted by the scheduling server:
@@ -108,10 +109,13 @@ These are defined as deployment options, and passed as JSON blob to the deployme
 
   * options
     * restart     - (default 1) 0 if the experiment is not to be restarted if the node is rebooted
+    * storage     - (default 1GB - container size?) storage quota for experiment results.
+
+TODO:
+
+  * operators - A list of operators and the associated traffic quotas
     * traffic_in  - traffic quota, ingoing traffic on all interfaces
     * traffic_out - traffic quota, outgoing traffic on all interfaces
-    * interfaces  - (default mon0, mon1, mon2) allow traffic on these interfaces
-    * storage     - (default 1GB - container size?) storage quota for experiment results.
 
 The options parameter should be x-www-form-urlencoded, that is separated by ampersands
 and in the form key=value, or in the form of a JSON object.
