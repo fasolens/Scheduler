@@ -397,6 +397,7 @@ AND id NOT IN (
     WHERE shared = 0 AND NOT ((s.stop < ?) OR (s.start > ?))
 )
                  """
+        print query
         c.execute(query, [NODE_ACTIVE] +
                   list(chain.from_iterable(type_require))+
                   list(chain.from_iterable(type_reject)) +
@@ -425,6 +426,7 @@ AND id NOT IN (
         period     = self.get_scheduling_period()
         start = max(start, period[0])
         stop  = period[1]
+        selection = nodes
 
         type_require, type_reject = self.parse_node_types(nodetypes)
         if type_require is None:
@@ -454,7 +456,7 @@ SELECT DISTINCT * FROM (
                     return [], None
                 c+=1
 
-            nodes = self.get_available_nodes(nodes,
+            nodes = self.get_available_nodes(selection,
                         type_require, type_reject, s0, segments[c])
             if len(nodes) >= nodecount:
                 slots.append({
