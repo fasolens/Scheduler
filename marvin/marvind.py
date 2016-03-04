@@ -192,7 +192,7 @@ class SchedulingClient:
         try:
             for status in self.status_queue[:]:
                 requests.put(
-                    config['rest-server'] + '/schedule/' + status['id'],
+                    config['rest-server'] + '/schedules/' + status['id'],
                     data=status,
                     cert=self.cert,
                     verify=False)
@@ -237,7 +237,8 @@ class SchedulingClient:
 
         for atid, command in self.jobs.iteritems():
             taskid = int(command.split(" ")[1]) if " " in command else ""
-            if taskid not in tasks:
+            if taskid not in tasks and "stop" not in command:
+                #FIXME: actually run stop hook immediately if the task is deleted
                 log.debug(
                     "deleting job %s from local atq, since %s not in %s (%s)" %
                     (atid, taskid, json.dumps(tasks), command))
