@@ -24,15 +24,15 @@ ERROR_INSUFFICIENT_RESOURCES = "sc1"
 ERROR_PARSING_FAILED = "sc2"
 
 TASK_STATUS_CODES = [
-    'defined',  # experiment is created in the scheduler
-    'deployed', # node has successfully deployed the experiment, scheduled start
-    'started',  # node has successfully started the experiment
-    'redeployed', # currently unused
-    'restarted',  # node has restarted the experiment after a failure (e.g. reboot)
-    'finished', # experiment completed successfully
-    'failed',   # experiment failed
-    'canceled', # user deleted experiment, task had not been deployed (but some were)
-    'aborted',  # user deleted experiment, task had been deployed
+    'defined',     # experiment is created in the scheduler
+    'deployed',    # node has deployed the experiment, scheduled start time
+    'started',     # node has successfully started the experiment
+    'redeployed',  # currently unused
+    'restarted',   # node has restarted the experiment after a node failure
+    'finished',    # experiment completed successfully
+    'failed',      # experiment failed
+    'canceled',    # user deleted experiment, task not deployed (but some were)
+    'aborted',     # user deleted experiment, task had been deployed
 ]
 
 # POLICY CHECKS AND VALUES
@@ -47,7 +47,7 @@ POLICY_TASK_MIN_RECURRENCE = 3600
 # scheduling may only happen # seconds in advance
 POLICY_SCHEDULING_PERIOD = 31 * 24 * 3600
 
-NODE_MISSING = 'missing'  # existed in the past, but no longer listed in the inventory
+NODE_MISSING = 'missing'  # existed in the past, but no longer listed
 NODE_DISABLED = 'disabled'  # set to STORAGE or other in the inventory
 NODE_ACTIVE = 'active'  # set to DEPLOYED (or TESTING) in the inventory
 
@@ -90,13 +90,13 @@ class Scheduler:
                     "Status"] == u'TESTING' else NODE_DISABLED
             c.execute(
                 "UPDATE nodes SET hostname = ?, status = ? WHERE id = ?",
-                (node.get("Hostname",node.get("HostName")),
+                (node.get("Hostname", node.get("HostName")),
                  status,
                  node["NodeId"]))
             c.execute(
                 "INSERT OR IGNORE INTO nodes VALUES (?, ?, ?, ?)",
                 (node["NodeId"],
-                 node.get("Hostname",node.get("HostName")),
+                 node.get("Hostname", node.get("HostName")),
                     status,
                     0))
             c.execute(
@@ -169,7 +169,8 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         if nodes:
             for node in nodes:
                 c.execute(
-                    "SELECT type FROM node_type WHERE nodeid = ?", (node['id'],))
+                    "SELECT type FROM node_type WHERE nodeid = ?",
+                    (node['id'],))
                 typerows = c.fetchall()
                 node['type'] = [row['type'] for row in typerows]
         return nodes
@@ -259,7 +260,8 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
             start = now
         if stop == 0:
             stop = period[1]
-        pastquery = (" AND NOT (start>%i OR stop<%i)" % (stop, start)
+        pastquery = (
+                        " AND NOT (start>%i OR stop<%i)" % (stop, start)
                     ) if not past else ""
         if schedid is not None:
             c.execute(
@@ -317,8 +319,9 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
                  ))
             result = [dict(x) for x in c.fetchall()]
             schedules = dict([(
-                           x['id'], { "status":x['status'], "nodeid": x['nodeid'] }
-                        ) for x in result])
+                               x['id'],
+                               {"status": x['status'], "nodeid": x['nodeid']}
+                              ) for x in result])
             experiments[i]['schedules'] = schedules
             experiments[i]['options'] = json.loads(task.get('options', '{}'))
             if 'recurring_until' in experiments[i]:
@@ -355,8 +358,8 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
                 POLICY_TASK_MAX_RUNTIME)
         if start > now + POLICY_SCHEDULING_PERIOD:
             raise SchedulerException(
-                "Tasks may not run be scheduled more than %s seconds in advance." %
-                POLICY_SCHEDULING_PERIOD)
+                "Tasks may not run be scheduled more than "
+                "%s seconds in advance." % POLICY_SCHEDULING_PERIOD)
 
         if recurrence is None:
             return [(start, stop)]
@@ -375,7 +378,8 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         else:
             return []
 
-    def get_available_nodes(self, nodes, type_require, type_reject, start, stop):
+    def get_available_nodes(self, nodes, type_require,
+                            type_reject, start, stop):
         """ Select all active nodes not having a task scheduled between
             start and stopfrom the set of nodes matching type_accept and
             not type_reject
@@ -384,7 +388,7 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         c = self.db().cursor()
 
         preselection = ""
-        if nodes is not None and len(nodes)>0:
+        if nodes is not None and len(nodes) > 0:
             preselection = " AND id IN ('" + "', '".join(nodes) + "') \n"
 
         query = "\nSELECT DISTINCT id FROM nodes WHERE status = ? \n"
@@ -405,7 +409,7 @@ AND id NOT IN (
                  """
         print query
         c.execute(query, [NODE_ACTIVE] +
-                  list(chain.from_iterable(type_require))+
+                  list(chain.from_iterable(type_require)) +
                   list(chain.from_iterable(type_reject)) +
                   [start, stop])
 
@@ -417,11 +421,12 @@ AND id NOT IN (
         try:
             types = nodetypes.split(",")
             type_reject = [t[1:].strip() for t in types
-                    if len(t)>2 and t[0] == '-']
+                           if len(t) > 2 and t[0] == '-']
             type_require = [t.strip() for t in types
-                    if len(t)>1 and t[0] != '-']
-            return [t.split("|") for t in type_require], [t.split("|") for t in type_reject]
-        except Exception,ex:
+                            if len(t) > 1 and t[0] != '-']
+            return [t.split("|") for t in type_require],\
+                   [t.split("|") for t in type_reject]
+        except Exception, ex:
             return None, "nodetype expression could not be parsed. "+ex.message
 
     def find_slot(self, nodecount=1, duration=1, start=0,
@@ -429,12 +434,13 @@ AND id NOT IN (
         """find the next available slot given certain criteria"""
 
         start, duration, nodecount = int(start), int(duration), int(nodecount)
-        period     = self.get_scheduling_period()
+        period = self.get_scheduling_period()
         start = max(start, period[0])
-        stop  = period[1]
+        stop = period[1]
 
-        if start>period[1]:
-            return None, "Provided start time is outside the allowed scheduling range (%s, %s)" % (period)
+        if start > period[1]:
+            return None, "Provided start time is outside the allowed"\
+                         "scheduling range (%s, %s)" % (period)
 
         selection = nodes
 
@@ -457,17 +463,18 @@ SELECT DISTINCT * FROM (
 
         slots = []
 
-        while len(segments)>1:
+        while len(segments) > 1:
             s0 = segments[0]
             c = 1
 
             while segments[c]-s0 < duration:
-                if c==len(segments)-1:
+                if c == len(segments)-1:
                     return None, "Could not find available time slot "\
                                  "matching these criteria."
-                c+=1
+                c += 1
 
-            nodes = self.get_available_nodes(selection,
+            nodes = self.get_available_nodes(
+                        selection,
                         type_require, type_reject, s0, segments[c])
             if len(nodes) >= nodecount:
                 slots.append({
@@ -478,19 +485,18 @@ SELECT DISTINCT * FROM (
                     'max_nodecount': len(nodes),
                     'nodetypes': nodetypes,
                 })
-                if len(slots)>=results:
-                  return slots, None
+                if len(slots) >= results:
+                    return slots, None
             # TODO: ideally, we identify the segment where the conflict occurs
             # and skip until after this segment. until then, we just iterate.
 
             segments.pop(0)
 
-        if len(slots)>0:
+        if len(slots) > 0:
             return slots, None
         else:
             return None, "Could not find available time slot "\
                          "matching these criteria."
-
 
     def allocate(self, user, name, start, stop, nodecount,
                  nodetypes, script, options):
@@ -537,9 +543,9 @@ SELECT DISTINCT * FROM (
                 opts = dict([opt.split("=")
                              for opt in options.split("&")]) if options else {}
             except Exception as ex:
-                return None, "options string could not be parsed. "+ex.message, {
-                           "code": ERROR_PARSING_FAILED
-                       }
+                return None,\
+                       "options string could not be parsed. "+ex.message,\
+                       {"code": ERROR_PARSING_FAILED}
 
         shared = 1 if opts.get('shared', 0) else 0
 
@@ -577,9 +583,9 @@ SELECT DISTINCT * FROM (
                        until, json.dumps(opts)))
             expid = c.lastrowid
             for inum, i in enumerate(intervals):
-                nodes = self.get_available_nodes(preselection,
-                           type_require, type_reject, i[0], i[1])
-
+                nodes = self.get_available_nodes(
+                            preselection, type_require, type_reject,
+                            i[0], i[1])
 
                 nodecount = int(nodecount)
                 log.debug(
@@ -590,16 +596,15 @@ SELECT DISTINCT * FROM (
                 if len(nodes) < nodecount:
                     self.db().rollback()
                     msg = "Only %s/%s nodes are available during " \
-                           "interval %s (%s,%s)." % \
-                           (len(nodes), nodecount, inum + 1, i[0], i[1])
+                          "interval %s (%s,%s)." % \
+                          (len(nodes), nodecount, inum + 1, i[0], i[1])
                     data = {"code": ERROR_INSUFFICIENT_RESOURCES,
-                            "available":len(nodes),
-                            "requested":nodecount,
-                            "selection":preselection,
-                            "start":i[0],
-                            "stop":i[1]}
+                            "available": len(nodes),
+                            "requested": nodecount,
+                            "selection": preselection,
+                            "start": i[0],
+                            "stop": i[1]}
                     return None, msg, data
-
 
                 nodes = nodes[:nodecount]
                 for node in nodes:
@@ -623,7 +628,8 @@ SELECT DISTINCT * FROM (
 
     def delete_experiment(self, expid):
         c = self.db().cursor()
-        c.execute("SELECT DISTINCT status FROM schedule WHERE expid = ?", (expid,))
+        c.execute("SELECT DISTINCT status FROM schedule WHERE expid = ?",
+                  (expid,))
         if c.rowcount == 0:
             return 0, "Could not find experiment id.", {}
         statuses = set([x[0] for x in c.fetchall()])
@@ -633,9 +639,17 @@ SELECT DISTINCT * FROM (
             self.db().commit()
             return 1, "Ok. Deleted experiment and scheduling entries", {}
         else:
-            c.execute("UPDATE schedule SET status = ? WHERE status IN ('defined')  AND expid = ?", ('canceled', expid))
+            c.execute("""
+UPDATE schedule SET status = ? WHERE
+    status IN ('defined')
+    AND expid = ?
+                      """, ('canceled', expid))
             canceled = c.rowcount
-            c.execute("UPDATE schedule SET status = ? WHERE status IN ('deployed', 'started', 'redeployed', 'restarted', 'running') AND expid = ?", ('aborted', expid))
+            c.execute("""
+UPDATE schedule SET status = ? WHERE
+    status IN ('deployed', 'started', 'redeployed', 'restarted', 'running')
+    AND expid = ?
+                      """, ('aborted', expid))
             aborted = c.rowcount
             self.db().commit()
             return 1, "Ok. Canceled or aborted scheduling entries", {
