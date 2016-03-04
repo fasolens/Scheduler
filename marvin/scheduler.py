@@ -426,6 +426,10 @@ AND id NOT IN (
         period     = self.get_scheduling_period()
         start = max(start, period[0])
         stop  = period[1]
+
+        if start>period[1]:
+            return None, "Provided start time is outside the allowed scheduling range (%s, %s)" % (period)
+
         selection = nodes
 
         type_require, type_reject = self.parse_node_types(nodetypes)
@@ -453,7 +457,8 @@ SELECT DISTINCT * FROM (
 
             while segments[c]-s0 < duration:
                 if c==len(segments)-1:
-                    return [], None
+                    return None, "Could not find available time slot "\
+                                 "matching these criteria."
                 c+=1
 
             nodes = self.get_available_nodes(selection,
