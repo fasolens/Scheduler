@@ -24,9 +24,15 @@ ERROR_INSUFFICIENT_RESOURCES = "sc1"
 ERROR_PARSING_FAILED = "sc2"
 
 TASK_STATUS_CODES = [
-    'defined', 'deployed', 'started', 'redeployed', 'restarted',
-    'finished',
-    'failed',
+    'defined',  # experiment is created in the scheduler
+    'deployed', # node has successfully deployed the experiment, scheduled start
+    'started',  # node has successfully started the experiment
+    'redeployed', # currently unused
+    'restarted',  # node has restarted the experiment after a failure (e.g. reboot)
+    'finished', # experiment completed successfully
+    'failed',   # experiment failed
+    'canceled', # user deleted experiment, task had not been deployed (but some were)
+    'aborted',  # user deleted experiment, task had been deployed
 ]
 
 # POLICY CHECKS AND VALUES
@@ -129,7 +135,7 @@ CREATE TABLE IF NOT EXISTS owners (id INTEGER PRIMARY KEY ASC,
 CREATE TABLE IF NOT EXISTS experiments (id INTEGER PRIMARY KEY ASC,
     name TEXT NOT NULL, ownerid INTEGER NOT NULL, type TEXT NOT NULL,
     script TEXT NOT NULL, start INTEGER NOT NULL, stop INTEGER NOT NULL,
-    recurring_until INTEGER NOT NULL, options TEXT,
+    recurring_until INTEGER NOT NULL, options TEXT, status TEXT,
     FOREIGN KEY (ownerid) REFERENCES owners(id));
 CREATE TABLE IF NOT EXISTS schedule (id INTEGER PRIMARY KEY ASC,
     nodeid INTEGER, expid INTEGER, start INTEGER, stop INTEGER,
@@ -617,10 +623,18 @@ SELECT DISTINCT * FROM (
 
     def delete_experiment(self, expid):
         c = self.db().cursor()
-        c.execute("DELETE FROM schedule WHERE expid = ?", (expid,))
-        c.execute("DELETE FROM experiments WHERE id = ?", (expid,))
-        self.db().commit()
-        return c.rowcount
+        c.execute("SELECT DISTINCT status FROM schedule WHERE expid = ?", (expid,))
+        statuses = set(c.fetchall())
+        if set("defined") == statuses:
+            c.execute("DELETE FROM schedule WHERE expid = ?", (expid,))
+            c.execute("DELETE FROM experiments WHERE id = ?", (expid,))
+            self.db().commit()
+            return c.rowcount
+        else:
+            c.execute("UPDATE schedule SET status = ? WHERE status IN ('defined')  AND expid = ?", ('canceled', expid))
+            c.execute("UPDATE schedule SET status = ? WHERE status IN ('deployed', 'started', 'redeployed', 'restarted') AND expid = ?", ('aborted', expid))
+            self.db().commit()
+            return c.rowcount
 
     def set_heartbeat(self, nodeid, seen):
         c = self.db().cursor()
