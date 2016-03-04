@@ -1,15 +1,13 @@
 #!/bin/bash
+#This script should always be run, as long as the container is deployed. 
 
 SCHEDID=$1
 CONTAINER=monroe-$SCHEDID
 
-# Stop our container and ensure the interfaces are still up
-
-# tags don't work with docker stop :|
+# Stop the container if it is running.
 CID=$( docker ps | grep $CONTAINER | awk '{print $1}' )
 if [ -z "$CID" ]; then
-  #exit 1;
-  echo 1;
+  echo "Container is no longer running.";
 else
   docker stop --time=10 $CID;
 fi
@@ -17,17 +15,20 @@ fi
 # TODO sync outdir
 
 # when in production, we will also want to delete the expired container image
-# but only if no recurring experiments are scheduled
+# but only if no scheduled experiments are expected to use the same image 
 
-# tags don't work with docker rmi either :|
 REF=$( docker images | grep $CONTAINER | awk '{print $3}' )
 docker rmi -f $REF
+
+# clean any untagged containers without dependencies (unused layers)
+docker rmi $(docker images -a|grep none|awk "{print \$3}") 2>/dev/null
 
 # undo startup and deployment steps
 MNS="ip netns exec monroe"
 
 INTERFACES="usb0 usb1 usb2 wlan0 eth0";
 for IF in $INTERFACES; do
+  if [ -z "$($MNS ip link|grep $IF)" ]; then continue; fi
   $MNS ip link delete $IF;
 done
 
