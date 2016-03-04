@@ -28,23 +28,28 @@ API_VERSION = "1.0"
 #       minor versions will increase after first deployment, and should not
 #       break compatibility with prior minor versions.
 
+
 def dumps(data):
     return json.dumps(data, sort_keys=True, indent='  ')
+
 
 def error(message, code=None, extra={}):
     if code is not None:
         extra["code"] = code
     return dumps(dict({"message": message}, **extra))
 
+
 def set_headers(web):
     web.header('Content-type', 'application/json')
     web.header('API-Version', API_VERSION)
+
 
 class ApiServer(web.application):
     def run(self, port=config['rest_api']['port'], *middleware):
         fn = self.wsgifunc(*middleware)
         return web.httpserver.runsimple(fn, (config['rest_api']['address'],
                                              config['rest_api']['port']))
+
 
 class Version:
     def GET(self):
@@ -59,7 +64,8 @@ class Resource:
         role = rest_api.get_role(web.ctx)
         if role is None:
             web.ctx.status = '401 Unauthorized'
-            return error("Please present a valid SSL client certificate to access this information")
+            return error("Please present a valid SSL client certificate"
+                         "to access this information")
 
         data = None
         if nodeid in ["", "/"]:
@@ -71,7 +77,8 @@ class Resource:
             elif len(path) > 2 and path[2] == 'all':
                 data = {
                   'schedules': rest_api.scheduler.get_schedule(nodeid=path[1]),
-                  'experiments': rest_api.scheduler.get_experiments(nodeid=path[1])
+                  'experiments':
+                  rest_api.scheduler.get_experiments(nodeid=path[1])
                 }
             else:
                 data = rest_api.scheduler.get_nodes(nodeid=path[1])
@@ -110,8 +117,8 @@ class Resource:
             return dumps(data)
         else:
             web.ctx.status = '400 Bad Request'
-            return error("Parameters missing: type\nIf you are a node, " \
-                         "you were identified as SSL_ID %s." % \
+            return error("Parameters missing: type\nIf you are a node, "
+                         "you were identified as SSL_ID %s." %
                          web.ctx.env.get('HTTP_SSL_FINGERPRINT', None))
 
 # SCHEDULE ##################################################################
@@ -123,24 +130,25 @@ class Schedule:  # allocate
         role = rest_api.get_role(web.ctx)
         if role is None:
             web.ctx.status = '401 Unauthorized'
-            return error("Please present a valid SSL client certificate to access this information")
+            return error("Please present a valid SSL client certificate to"
+                         "access this information")
 
         params = web.input()
         if resource in ["", "/"]:
             tasks = rest_api.scheduler.get_schedule(
-                        start = params.get('start',0),
-                        stop = params.get('stop',0)
+                        start=params.get('start', 0),
+                        stop=params.get('stop', 0)
                     )
         elif resource == "/find":
-            nodes = params.get('nodes',None)
-            selection = nodes.split(",") if nodes is not None else None 
+            nodes = params.get('nodes', None)
+            selection = nodes.split(",") if nodes is not None else None
             tasks, errmsg = rest_api.scheduler.find_slot(
-                        nodecount = params.get('nodecount', 1),
-                        duration = params.get('duration', 1),
-                        start = params.get('start', 0),
-                        nodetypes = params.get('nodetypes', ''),
-                        results = params.get('results', 1),
-                        nodes = selection
+                        nodecount=params.get('nodecount', 1),
+                        duration=params.get('duration', 1),
+                        start=params.get('start', 0),
+                        nodetypes=params.get('nodetypes', ''),
+                        results=params.get('results', 1),
+                        nodes=selection
                     )
             if tasks is None:
                 web.ctx.status = '409 Conflict'
@@ -187,7 +195,8 @@ class Experiment:
         role = rest_api.get_role(web.ctx)
         if role is None:
             web.ctx.status = '401 Unauthorized'
-            return error("Please present a valid SSL client certificate to access this information")
+            return error("Please present a valid SSL client certificate to "
+                         "access this information")
 
         if task in ["", "/"]:
             tasks = rest_api.scheduler.get_experiments()
@@ -213,7 +222,8 @@ class Experiment:
             params = json.loads(web.data())
         except:
             params = web.input()
-        required = ['name', 'start', 'stop', 'nodecount', 'nodetypes', 'script']
+        required = ['name', 'start', 'stop', 'nodecount',
+                    'nodetypes', 'script']
         optional = ['options']
         if set(required).issubset(set(params.keys())):
             alloc, errmsg, extra = rest_api.scheduler.allocate(
@@ -230,9 +240,9 @@ class Experiment:
                 return error("Could not allocate. %s" % errmsg, extra=extra)
         else:
             web.ctx.status = '400 Bad Request'
-            return error("Parameters missing " \
-                   "(required: %s | optional: %s, provided: %s)." \
-                   % (str(required), str(optional), str(params.keys())))
+            return error("Parameters missing "
+                         "(required: %s | optional: %s, provided: %s)."
+                         % (str(required), str(optional), str(params.keys())))
 
     def DELETE(self, expid):
         role = rest_api.get_role(web.ctx)
@@ -244,7 +254,8 @@ class Experiment:
             web.ctx.status = '400 Bad Request'
             return error("Taskid missing.")
         else:
-            result, message, extra = rest_api.scheduler.delete_experiment(expid[1:])
+            result, message, extra = \
+                rest_api.scheduler.delete_experiment(expid[1:])
             log.debug("Delete result: %s rows deleted" % result)
             if result > 0:
                 return error(message, extra=extra)
@@ -261,7 +272,8 @@ class User:
         role = rest_api.get_role(web.ctx)
         if role is None:
             web.ctx.status = '401 Unauthorized'
-            return error("Please present a valid SSL client certificate to access this information")
+            return error("Please present a valid SSL client certificate to "
+                         "access this information")
 
         data = None
         log.debug(userid)
@@ -287,8 +299,8 @@ class User:
         role = rest_api.get_role(web.ctx)
         if role != scheduler.ROLE_ADMIN:
             web.ctx.status = '401 Unauthorized'
-            return error("You'd have to be an admin to do that (%s, %s)" % \
-                   (role, scheduler.ROLE_ADMIN))
+            return error("You'd have to be an admin to do that (%s, %s)" %
+                         (role, scheduler.ROLE_ADMIN))
 
         data = web.input()
         if "name" in data and "ssl" in data and "role" in data:
