@@ -244,13 +244,13 @@ class Experiment:
             web.ctx.status = '400 Bad Request'
             return error("Taskid missing.")
         else:
-            result = rest_api.scheduler.delete_experiment(expid[1:])
+            result, message, extra = rest_api.scheduler.delete_experiment(expid[1:])
             log.debug("Delete result: %s rows deleted" % result)
             if result > 0:
-                return error("Ok. Deleted task and scheduling entries.")
+                return error(message, extra=extra)
             else:
                 web.ctx.status = '404 Not Found'
-                return error("Could not find task id.")
+                return error("Could not find experiment id.")
 
 # USER ######################################################################
 

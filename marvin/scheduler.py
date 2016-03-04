@@ -624,17 +624,24 @@ SELECT DISTINCT * FROM (
     def delete_experiment(self, expid):
         c = self.db().cursor()
         c.execute("SELECT DISTINCT status FROM schedule WHERE expid = ?", (expid,))
-        statuses = set(c.fetchall())
-        if set("defined") == statuses:
+        if c.rowcount == 0:
+            return 0, "Could not find experiment id.", {}
+        statuses = set([x[0] for x in c.fetchall()])
+        if set(['defined']) == statuses or set(['canceled']) == statuses:
             c.execute("DELETE FROM schedule WHERE expid = ?", (expid,))
             c.execute("DELETE FROM experiments WHERE id = ?", (expid,))
             self.db().commit()
-            return c.rowcount
+            return 1, "Ok. Deleted experiment and scheduling entries", {}
         else:
             c.execute("UPDATE schedule SET status = ? WHERE status IN ('defined')  AND expid = ?", ('canceled', expid))
-            c.execute("UPDATE schedule SET status = ? WHERE status IN ('deployed', 'started', 'redeployed', 'restarted') AND expid = ?", ('aborted', expid))
+            canceled = c.rowcount
+            c.execute("UPDATE schedule SET status = ? WHERE status IN ('deployed', 'started', 'redeployed', 'restarted', 'running') AND expid = ?", ('aborted', expid))
+            aborted = c.rowcount
             self.db().commit()
-            return c.rowcount
+            return 1, "Ok. Canceled or aborted scheduling entries", {
+                       "canceled": canceled,
+                       "aborted": aborted
+                   }
 
     def set_heartbeat(self, nodeid, seen):
         c = self.db().cursor()
