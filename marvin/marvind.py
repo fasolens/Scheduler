@@ -110,9 +110,9 @@ class SchedulingClient:
         """upon querying a task, add it to local atq"""
         log.debug("add_task (%s, %s)" % (json.dumps(task), json.dumps(sched)))
 
-        id   = str(task['id'])
+        id   = str(sched['id'])
         #repetition = 1
-        #guid = str("%i-%i-%i", (task['expid'], task['nodeid'], repetition))
+        #guid = str("%i-%i-%i", (id, task['nodeid'], repetition))
         now  = int(time.time())
 
         starthook = self.starthook + " " + id # + " " + guid
@@ -124,6 +124,7 @@ class SchedulingClient:
             json.dumps(deploy_opts) + "'"  # escaped as bash parameters
 
         if timestamp > now:
+            print [self.deployhook, id, task['script'], deploy_opts_safe]
             pro = Popen(
                 [self.deployhook,
                  id,
@@ -131,11 +132,12 @@ class SchedulingClient:
                     deploy_opts_safe],
                 stdout=PIPE,
                 stdin=PIPE)
-            pro.communicate()[0]
+            output = pro.communicate()[0]
             if pro.returncode == 0:
                 self.set_status(id, "deployed")
             else:
                 # TODO detect acceptable failure codes (delayed deployment)
+                print output 
                 return
 
             timestring = datetime.fromtimestamp(
@@ -245,27 +247,27 @@ class SchedulingClient:
         # SECOND fetch all remote tasks NOT in atq
         for sched in schedule:
             schedid = str(sched["id"])   # scheduling id. schedid n:1 taskid
-            taskid = str(sched["expid"])
+            expid = str(sched["expid"])
             if sched["status"] in ['failed', 'finished']:
                 log.debug(
                     "Not scheduling aborted task "
-                    "(Taskid %s, scheduling id %s)" % (taskid, schedid))
+                    "(Taskid %s, scheduling id %s)" % (expid, schedid))
                 continue
 
-            starthook = self.starthook + " " + taskid
-            stophook = self.stophook + " " + taskid
+            starthook = self.starthook + " " + schedid
+            stophook = self.stophook + " " + schedid
 
             known = self.jobs.values()
             log.debug("known tasks:\n" + json.dumps(self.jobs))
             # FIXME: we'll actually have to check if the wrapup task exists,
             #       in case that the task has started already
             if (starthook not in known) and (stophook not in known):
-                log.debug("unknown task: %s" % taskid)
+                log.debug("unknown task: %s" % schedid)
                 result = requests.get(
                     config[
                         'rest-server'] +
                     '/experiments/' +
-                    taskid,
+                    expid,
                     cert=self.cert,
                     verify=False)
                 task = result.json()
@@ -275,7 +277,7 @@ class SchedulingClient:
                     traceback.print_exc(file=sys.stdout)
                     log.error(
                         "Fetching experiment %s did not return a task "
-                        "definition, but %s" % (taskid, task))
+                        "definition, but %s" % (expid, task))
 
     def start(self):
         self.starthook = config['hooks']['start']
