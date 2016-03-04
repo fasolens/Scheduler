@@ -191,13 +191,15 @@ class SchedulingClient:
     def post_status(self):
         try:
             for status in self.status_queue[:]:
+                print "Trying to set status %s." % (status,)
                 requests.put(
-                    config['rest-server'] + '/schedules/' + status['id'],
+                    config['rest-server'] + '/schedules/' + status['schedid'],
                     data=status,
                     cert=self.cert,
                     verify=False)
                 self.status_queue.pop()
-        except:
+        except Exception, ex:
+            print ex
             pass
 
     def read_jobs(self):
