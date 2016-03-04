@@ -617,7 +617,7 @@ SELECT DISTINCT * FROM (
 
     def delete_experiment(self, expid):
         c = self.db().cursor()
-        c.execute("DELETE FROM schedule WHERE id = ?", (expid,))
+        c.execute("DELETE FROM schedule WHERE expid = ?", (expid,))
         c.execute("DELETE FROM experiments WHERE id = ?", (expid,))
         self.db().commit()
         return c.rowcount
