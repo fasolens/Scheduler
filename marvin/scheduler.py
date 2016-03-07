@@ -46,6 +46,8 @@ POLICY_TASK_MAX_RUNTIME = 24 * 3600
 POLICY_TASK_MIN_RECURRENCE = 3600
 # scheduling may only happen # seconds in advance
 POLICY_SCHEDULING_PERIOD = 31 * 24 * 3600
+# scheduling may only happen # seconds after previous task
+POLICY_TASK_PADDING = 2 * 60 
 
 NODE_MISSING = 'missing'  # existed in the past, but no longer listed
 NODE_DISABLED = 'disabled'  # set to STORAGE or other in the inventory
@@ -404,14 +406,14 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         query += """
 AND id NOT IN (
     SELECT DISTINCT nodeid FROM schedule s
-    WHERE shared = 0 AND NOT ((s.stop < ?) OR (s.start > ?))
+    WHERE shared = 0 AND NOT ((s.stop + ? < ?) OR (s.start - ? > ?))
 )
                  """
         print query
         c.execute(query, [NODE_ACTIVE] +
                   list(chain.from_iterable(type_require)) +
                   list(chain.from_iterable(type_reject)) +
-                  [start, stop])
+                  [POLICY_TASK_PADDING, start, POLICY_TASK_PADDING, stop])
 
         noderows = c.fetchall()
         nodes = [dict(x) for x in noderows]
