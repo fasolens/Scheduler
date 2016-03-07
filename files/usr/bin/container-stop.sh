@@ -12,6 +12,8 @@ else
   docker stop --time=10 $CID;
 fi
 
+echo 'finished' > /outdir/$SCHEDID.status
+
 # TODO sync outdir
 
 # when in production, we will also want to delete the expired container image

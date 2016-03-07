@@ -12,6 +12,8 @@ usage: marvind.py configfile
 """
 
 import sys
+from glob import glob
+from os import unlink
 import logging
 import configuration
 
@@ -282,10 +284,26 @@ class SchedulingClient:
                         "Fetching experiment %s did not return a task "
                         "definition, but %s" % (expid, task))
 
+        # FINALLY read and post task status from /outdir/*.status 
+        try:
+            statfiles = glob(self.statdir + "/*.status")
+            for f in statfiles:
+                schedid = f.split("/")[-1].split(".status")[0]
+                with open(f) as fd:
+                    status = fd.read()
+                    set_status(schedid, status)
+                    fd.close()
+                unlink(f)
+        except Exception,ex:
+	    log.error("Error reading or sending experiment status. %s" % str(ex))
+            
+
+
     def start(self):
         self.starthook = config['hooks']['start']
         self.stophook = config['hooks']['stop']
         self.deployhook = config['hooks']['deploy']
+        self.statdir = config['status_directory']
 
         result = requests.get(
             config['rest-server'] + "/backend/auth",

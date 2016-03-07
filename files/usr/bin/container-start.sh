@@ -25,6 +25,7 @@ docker run -d --cgroup-parent=monroe\
 CID=$(docker ps --no-trunc | grep $CONTAINER | awk '{print $1}')
 
 if [ -z "$CID" ]; then
+    echo 'failed' > /outdir/$SCHEDID.status
     exit $ERROR_CONTAINER_DID_NOT_START;
 fi
 
@@ -84,7 +85,9 @@ if [ ! -z $PID ]; then
    $MNS multi_client -d;
 
 else
+  echo 'failed' > /outdir/$SCHEDID.status
   exit $ERROR_CONTAINER_DID_NOT_START;
 fi
-
+ 
+echo 'started' > /outdir/$SCHEDID.status
 # TODO log status to sysevent and return a success value to the scheduler
