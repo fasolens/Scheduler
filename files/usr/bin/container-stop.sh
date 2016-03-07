@@ -18,10 +18,14 @@ fi
 # but only if no scheduled experiments are expected to use the same image 
 
 REF=$( docker images | grep $CONTAINER | awk '{print $3}' )
-docker rmi -f $REF
+if [ -z "$REF" ]; then
+  echo "Container is no longer deployed.";
+else
+  docker rmi -f $REF
+fi
 
 # clean any untagged containers without dependencies (unused layers)
-docker rmi $(docker images -a|grep none|awk "{print \$3}") 2>/dev/null
+docker rmi $(docker images -a|grep '^<none>'|awk "{print \$3}") 2>/dev/null
 
 # undo startup and deployment steps
 MNS="ip netns exec monroe"
