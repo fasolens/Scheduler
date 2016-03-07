@@ -90,8 +90,9 @@ only for nodes (role: node)
 The following parameters are used to schedule an experiment:
 
   * taskname  - an arbitrary identifier
-  * start     - a UNIX time stamp, the start time
-  * stop      - a UNIX time stamp, the stop time
+  * start     - a UNIX time stamp, the start time (may be left 0 to indicate ASAP)
+  * stop      - a UNIX time stamp, the stop time **OR**
+  * duration  - runtime of the experiment in seconds.
   * nodecount - the number of nodes to allocate this experiment to
   * nodetypes - the type filter of required and rejected node types, e.g. "mobile,spain|norway,-apu1"
                 Supports the operators OR(|), NOT(-) and AND(,) in this strict order of precedence.
