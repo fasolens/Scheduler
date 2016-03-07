@@ -24,6 +24,8 @@ else
   docker rmi -f $REF
 fi
 
+# remove all stopped containers (remove all, ignore errors when running)
+docker rm $(docker ps -aq) 2>/dev/null
 # clean any untagged containers without dependencies (unused layers)
 docker rmi $(docker images -a|grep '^<none>'|awk "{print \$3}") 2>/dev/null
 

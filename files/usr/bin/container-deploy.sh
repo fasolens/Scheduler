@@ -18,7 +18,10 @@ if (( "$DISKSPACE" < $(( 2000000 + $DISKQUOTA )) )); then
 fi
 
 docker pull $CONTAINER_URL || exit $ERROR_CONTAINER_NOT_FOUND
+
+#retag container image with scheduling id
 docker tag -f $CONTAINER_URL monroe-$SCHEDID
+docker rmi $CONTAINER_URL
 
 if [ ! -d /outdir/$SCHEDID ]; then 
     mkdir -p /outdir/$SCHEDID;
