@@ -290,8 +290,8 @@ class SchedulingClient:
             for f in statfiles:
                 schedid = f.split("/")[-1].split(".status")[0]
                 with open(f) as fd:
-                    status = fd.read()
-                    set_status(schedid, status)
+                    status = fd.read().strip()
+                    self.set_status(schedid, status)
                     fd.close()
                 unlink(f)
         except Exception,ex:
