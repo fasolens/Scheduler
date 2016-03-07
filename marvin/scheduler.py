@@ -498,7 +498,7 @@ SELECT DISTINCT * FROM (
             return None, "Could not find available time slot "\
                          "matching these criteria."
 
-    def allocate(self, user, name, start, stop, nodecount,
+    def allocate(self, user, name, start, duration, nodecount,
                  nodetypes, script, options):
         """Insert a new task on one or multiple nodes,
         creating one or multible jobs.
@@ -506,7 +506,8 @@ SELECT DISTINCT * FROM (
         Keyword arguments:
         user        -- userid of the experimenter
         name        -- arbitrary identifier
-        start, stop -- unix time stamp (UTC)
+        start       -- unix time stamp (UTC)
+        duration    -- duration of the experiment in seconds
         nodecount   -- number of required nodes.
         nodetypes   -- filter on node type (static,spain|norway,-apu1)
         script      -- deployment URL to be fetched
@@ -523,9 +524,10 @@ SELECT DISTINCT * FROM (
         #       for extension. This should be a quick check.
 
         try:
-            start, stop = int(start), int(stop)
+            start, duration = int(start), int(duration)
         except Exception as ex:
-            return None, "Start and stop times must be Unix timestamps.", {
+            return None, "Start time and duration must be in integer seconds "\
+                         "(unix timestamps)", {
                        "code": ERROR_PARSING_FAILED
                    }
         c = self.db().cursor()
@@ -569,6 +571,10 @@ SELECT DISTINCT * FROM (
         if type_require is None:
             error_message = type_reject
             return None, error_message, {}
+
+        if start==0:
+            start = self.get_scheduling_period()[0] + 10
+        stop = start + duration
 
         try:
             intervals = self.get_recurrence_intervals(start, stop, opts)

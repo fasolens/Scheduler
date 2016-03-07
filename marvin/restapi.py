@@ -124,7 +124,7 @@ class Resource:
 # SCHEDULE ##################################################################
 
 
-class Schedule:  # allocate
+class Schedule:
 
     def GET(self, resource):
         role = rest_api.get_role(web.ctx)
@@ -222,13 +222,16 @@ class Experiment:
             params = json.loads(web.data())
         except:
             params = web.input()
-        required = ['name', 'start', 'stop', 'nodecount',
-                    'nodetypes', 'script']
-        optional = ['options']
+        required = ['name', 'nodecount', 'nodetypes', 'script']
+        optional = ['options', 'start', 'stop', 'duration']
         if set(required).issubset(set(params.keys())):
+            start    = params.get('start',0)
+            stop     = params.get('stop',0)
+            duration = params.get('duration', stop-start)
+
             alloc, errmsg, extra = rest_api.scheduler.allocate(
                                    user, params['name'],
-                                   params['start'], params['stop'],
+                                   start, duration,
                                    params['nodecount'], params['nodetypes'],
                                    params['script'], params.get('options', ''))
             if alloc is not None:
