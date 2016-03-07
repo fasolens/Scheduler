@@ -248,6 +248,7 @@ class SchedulingClient:
                     (atid, taskid, json.dumps(tasks), command))
                 pro = Popen(["atrm", str(atid)], stdout=PIPE)
                 pro.communicate()
+                del self.jobs[atid]
 
         # SECOND fetch all remote tasks NOT in atq
         for sched in schedule:
