@@ -17,11 +17,15 @@ if (( "$DISKSPACE" < $(( 2000000 + $DISKQUOTA )) )); then
     exit 1;
 fi
 
+EXISTED=$(docker images -q $CONTAINER_URL)
+
 docker pull $CONTAINER_URL || exit $ERROR_CONTAINER_NOT_FOUND
 
 #retag container image with scheduling id
 docker tag -f $CONTAINER_URL monroe-$SCHEDID
-docker rmi $CONTAINER_URL
+if [ -z "$EXISTED" ]; then
+    docker rmi $CONTAINER_URL
+fi
 
 if [ ! -d /outdir/$SCHEDID ]; then 
     mkdir -p /outdir/$SCHEDID;
