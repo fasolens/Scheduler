@@ -45,3 +45,5 @@ docker rmi $(docker images -a|grep '^<none>'|awk "{print \$3}") 2>/dev/null
 umount /outdir/$SCHEDID
 rmdir  /outdir/$SCHEDID
 rm     /outdir/${SCHEDID}.disk
+rm     /outdir/${SCHEDID}.counter
+
