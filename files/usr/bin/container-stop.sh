@@ -34,7 +34,7 @@ REF=$( docker images | grep $CONTAINER | awk '{print $3}' )
 if [ -z "$REF" ]; then
   echo "Container is no longer deployed.";
 else
-  docker rmi $CONTAINER
+  docker rmi -f $CONTAINER
 fi
 
 # remove all stopped containers (remove all, ignore errors when running)
