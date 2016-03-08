@@ -22,7 +22,7 @@ EXISTED=$(docker images -q $CONTAINER_URL)
 docker pull $CONTAINER_URL || exit $ERROR_CONTAINER_NOT_FOUND
 
 #retag container image with scheduling id
-docker tag -f $CONTAINER_URL monroe-$SCHEDID
+docker tag $CONTAINER_URL monroe-$SCHEDID
 if [ -z "$EXISTED" ]; then
     docker rmi $CONTAINER_URL
 fi
