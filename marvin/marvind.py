@@ -113,11 +113,9 @@ class SchedulingClient:
         log.debug("add_task (%s, %s)" % (json.dumps(task), json.dumps(sched)))
 
         id   = str(sched['id'])
-        #repetition = 1
-        #guid = str("%i-%i-%i", (id, task['nodeid'], repetition))
         now  = int(time.time())
 
-        starthook = self.starthook + " " + id # + " " + guid
+        starthook = self.starthook + " " + id 
         stophook = self.stophook + " " + id
 
         timestamp = sched['start']
