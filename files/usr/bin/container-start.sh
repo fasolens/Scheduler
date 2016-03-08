@@ -43,8 +43,10 @@ if [ ! -z $PID ]; then
   # to execute any command within the monroe netns, use $MNS command
   MNS="ip netns exec monroe";
 
-  # set container net_cls.classid foc accounting and quotas
-  echo '0x00100001' > /sys/fs/cgroup/net_cls,net_prio/system.slice/monroe-${CID}.scope/net_cls.classid;
+  # set container net_cls.classid for accounting and quotas
+  # two different locations for docker 1.9.1 and docker 1.10+
+  echo '0x00100001' > /sys/fs/cgroup/net_cls,net_prio/system.slice/monroe-${CID}.scope/net_cls.classid ||
+  echo '0x00100001' > /sys/fs/cgroup/net_cls,net_prio/monroe/${CID}/net_cls.classid;
 
   ### TRAFFIC QUOTAS #########################################
   # we currently use net_cls 10:1 for the active experiment
