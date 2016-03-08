@@ -11,6 +11,14 @@ mkdir -p /var/run/netns
 # make sure our cgroup is setup
 cgcreate -g net_cls:/monroe
 
+# Container boot counter and measurement UID
+
+COUNT=$(cat /outdir/${SCHEDID}.counter 2>/dev/null || echo 0)
+COUNT=$(($COUNT + 1))
+echo $COUNT > /outdir/${SCHEDID}.counter
+
+NODEID=$(</etc/nodeid)
+
 ### START THE CONTAINER ####################################
 # TODO: parameters to be passed, e.g. nodeid
 # NOTE: this assumes the container wrapper delays execution
@@ -19,7 +27,8 @@ cgcreate -g net_cls:/monroe
 docker run -d --cgroup-parent=monroe\
        --net=none \
        -v /outdir/$SCHEDID:/outdir \
-       $CONTAINER
+       $CONTAINER \
+       --guid ${SCHEDID}.${NODEID}.${COUNT}
 
 # CID: the runtime container ID
 CID=$(docker ps --no-trunc | grep $CONTAINER | awk '{print $1}')
