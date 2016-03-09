@@ -231,8 +231,8 @@ class SchedulingClient:
 
     def update_schedule(self, data):
         log.debug("update_schedule (%s)" % json.dumps(data))
-        tasks = [x['id'] for x in data]
-        schedule = data
+        schedule = data[:3] # download the first three tasks only
+        tasks = [x['id'] for x in schedule]
 
         # FIRST update scheduled tasks from atq
         self.jobs = self.read_jobs()
