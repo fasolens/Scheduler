@@ -87,9 +87,9 @@ class Scheduler:
         for node in nodes:
             # update if exists
             log.debug(node)
-            status = NODE_ACTIVE if node[
-                "Status"] == u'DEPLOYED' or node[
-                    "Status"] == u'TESTING' else NODE_DISABLED
+            status = NODE_ACTIVE if node["Status"] == u'DEPLOYED'\
+                                 or node["Status"] == u'TESTING' \
+                                 else NODE_DISABLED
             c.execute(
                 "UPDATE nodes SET hostname = ?, status = ? WHERE id = ?",
                 (node.get("Hostname", node.get("HostName")),
@@ -101,10 +101,19 @@ class Scheduler:
                  node.get("Hostname", node.get("HostName")),
                     status,
                     0))
-            c.execute(
-                "INSERT OR IGNORE INTO node_type VALUES (?, ?)",
-                (node["NodeId"],
-                 NODE_TYPE_STATIC))
+            types = []
+            country = node.get('Country')
+            if country is not None: types.append('country:'+country.lower())
+            model = node.get('Model')
+            if model is not None: types.append('model:'+model.lower())
+            status = node.get('Status')
+            if status is not None: types.append(status.lower())
+
+            c.execute("DELETE FROM node_type WHERE nodeid = ?", (node["NodeId"],))
+            for type_ in types:
+                c.execute(
+                    "INSERT OR IGNORE INTO node_type VALUES (?, ?)",
+                    (node["NodeId"], type_))
         self.db().commit()
 
     connections = {}
