@@ -277,7 +277,7 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         elif userid is not None:
             c.execute("SELECT * FROM schedule s, experiments t "
                       "WHERE s.expid = t.id AND ownerid=?" +
-                      pastquery, (userid,))
+                      pastquery + " ORDER BY s.start ASC", (userid,))
         else:
             c.execute("SELECT * FROM schedule WHERE 1=1" + pastquery)
         taskrows = c.fetchall()
