@@ -272,23 +272,23 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         if stop == 0:
             stop = period[1]
         pastquery = (
-                        " AND NOT (start>%i OR stop<%i)" % (stop, start)
+                        " AND NOT (s.start>%i OR s.stop<%i)" % (stop, start)
                     ) if not past else ""
         if schedid is not None:
             c.execute(
-                "SELECT * FROM schedule WHERE id = ?" + pastquery, (schedid,))
+                "SELECT * FROM schedule s WHERE s.id = ?" + pastquery, (schedid,))
         elif expid is not None:
             c.execute(
-                "SELECT * FROM schedule WHERE expid = ?" + pastquery, (expid,))
+                "SELECT * FROM schedule s WHERE s.expid = ?" + pastquery, (expid,))
         elif nodeid is not None:
             c.execute(
-                "SELECT * FROM schedule WHERE nodeid=?" + pastquery, (nodeid,))
+                "SELECT * FROM schedule s WHERE s.nodeid=?" + pastquery, (nodeid,))
         elif userid is not None:
             c.execute("SELECT * FROM schedule s, experiments t "
-                      "WHERE s.expid = t.id AND ownerid=?" +
+                      "WHERE s.expid = t.id AND t.ownerid=?" +
                       pastquery + " ORDER BY s.start ASC", (userid,))
         else:
-            c.execute("SELECT * FROM schedule WHERE 1=1" + pastquery)
+            c.execute("SELECT * FROM schedule s WHERE 1=1" + pastquery)
         taskrows = c.fetchall()
         tasks = [dict(x) for x in taskrows]
         for x in tasks:
