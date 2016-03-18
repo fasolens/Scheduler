@@ -73,7 +73,8 @@ class Scheduler:
 
     def __init__(self):
         self.check_db()
-        self.sync_inventory()
+        if config.get('inventory',{}).get('sync', True):
+            self.sync_inventory()
 
     def sync_inventory(self):
         nodes = inventory_api("nodes/status")
