@@ -353,7 +353,7 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         until = int(opts.get('until', 0))
         now = time.time()
 
-        until = max(self.get_scheduling_period()[1], int(until))
+        until = min(self.get_scheduling_period()[1], int(until))
 
         if start < now + POLICY_TASK_DELAY:
             raise SchedulerException(
