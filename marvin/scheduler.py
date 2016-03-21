@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS owners (id INTEGER PRIMARY KEY ASC,
 CREATE TABLE IF NOT EXISTS experiments (id INTEGER PRIMARY KEY ASC,
     name TEXT NOT NULL, ownerid INTEGER NOT NULL, type TEXT NOT NULL,
     script TEXT NOT NULL, start INTEGER NOT NULL, stop INTEGER NOT NULL,
-    recurring_until INTEGER NOT NULL, options TEXT, status TEXT,
+    recurring_until INTEGER NOT NULL, options TEXT,
     FOREIGN KEY (ownerid) REFERENCES owners(id));
 CREATE TABLE IF NOT EXISTS schedule (id INTEGER PRIMARY KEY ASC,
     nodeid INTEGER, expid INTEGER, start INTEGER, stop INTEGER,
