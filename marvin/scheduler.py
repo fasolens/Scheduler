@@ -642,7 +642,7 @@ SELECT DISTINCT * FROM (
         except db.Error as er:
             # NOTE: automatic rollback is triggered in case of an exception
             log.error(er.message)
-            return None, "Task creation failed."
+            return None, "Task creation failed.", {}
 
     def delete_experiment(self, expid):
         c = self.db().cursor()
