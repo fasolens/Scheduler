@@ -628,7 +628,7 @@ SELECT DISTINCT * FROM (
                 for node in nodes:
                     c.execute("INSERT INTO schedule VALUES "
                               "(NULL, ?, ?, ?, ?, ?, ?, ?)",
-                              (node['id'], expid, start, stop, 'defined',
+                              (node['id'], expid, i[0], i[1], 'defined',
                                shared, json.dumps(deployment_opts)))
 
             self.db().commit()
