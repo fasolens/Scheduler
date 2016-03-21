@@ -17,6 +17,7 @@ from os import unlink
 import logging
 import configuration
 
+import zmq
 import requests
 import simplejson as json
 import time
@@ -43,6 +44,7 @@ log = logging.getLogger('marvind')
 
 AT_TIME_FORMAT = "%H:%M %Y-%m-%d"
 
+SYSEVENT_SCHEDULING_STARTED = "Scheduling.Started"
 
 class SchedulingClient:
     running = threading.Event()
@@ -70,6 +72,16 @@ class SchedulingClient:
         cert_file = config['ssl']['cert']
         key_file = config['ssl']['key']
         self.cert = (cert_file, key_file)
+
+    def sysevent(self, eventType):
+        try:
+            socket = context.socket(zmq.REQ)
+            socket.connect("ipc:///tmp/sysevent")
+            socket.send("{\"EventType\": \"%s\"}" % (eventType,))
+            socket.close(5) 
+        except Exception, ex:
+            pass
+        print message
 
     def resume_tasks(self):
         """When marvind is starting, it may be because the system has shut down.
@@ -313,6 +325,8 @@ class SchedulingClient:
         if result.status_code == 401:
             log.error("Node certificate not valid.")
             return
+
+        self.sysevent(SYSEVENT_SCHEDULING_STARTED)
 
         self.resume_tasks()
 
