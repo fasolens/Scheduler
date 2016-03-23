@@ -81,7 +81,6 @@ class SchedulingClient:
             socket.close(5) 
         except Exception, ex:
             pass
-        print message
 
     def resume_tasks(self):
         """When marvind is starting, it may be because the system has shut down.
