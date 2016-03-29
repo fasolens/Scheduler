@@ -256,8 +256,9 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
     def create_user(self, name, ssl, role):
         c = self.db().cursor()
         today = datetime.date.today()
+        now = int(time.time())
         first_of_next_month =  datetime.datetime(year = today.year,
-                                                 month=today.month,
+                                                 month=(today.month % 12) + 1,
                                                  day=1).strftime('%s')
         try:
             c.execute(
@@ -266,15 +267,15 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
             c.execute(
                 "INSERT INTO quota_owner_time VALUES (?, ?, ?, ?, ?)",
                 (userid, POLICY_DEFAULT_QUOTA_TIME, POLICY_DEFAULT_QUOTA_TIME,
-                 first_of_next_month, 0))
+                 first_of_next_month, now))
             c.execute(
                 "INSERT INTO quota_owner_data VALUES (?, ?, ?, ?, ?)",
                 (userid, POLICY_DEFAULT_QUOTA_DATA, POLICY_DEFAULT_QUOTA_DATA,
-                 first_of_next_month, 0))
+                 first_of_next_month, now))
             c.execute(
                 "INSERT INTO quota_owner_storage VALUES (?, ?, ?, ?, ?)",
                 (userid, POLICY_DEFAULT_QUOTA_STORAGE,
-                 POLICY_DEFAULT_QUOTA_STORAGE, first_of_next_month, 0))
+                 POLICY_DEFAULT_QUOTA_STORAGE, first_of_next_month, now))
             self.db().commit()
             return userid, None
         except db.Error as er:
