@@ -47,7 +47,13 @@ POLICY_TASK_MIN_RECURRENCE = 3600
 # scheduling may only happen # seconds in advance
 POLICY_SCHEDULING_PERIOD = 31 * 24 * 3600
 # scheduling may only happen # seconds after previous task
-POLICY_TASK_PADDING = 2 * 60 
+POLICY_TASK_PADDING = 2 * 60
+
+# some default quotas until we have something else defined
+POLICY_DEFAULT_QUOTA_TIME = 50 * 24 * 3600 # 50 Node days
+POLICY_DEFAULT_QUOTA_DATA = 50 * 1000000000 # 50 GB
+POLICY_DEFAULT_QUOTA_STORAGE = 50 * 1000000000 # 50 GB
+POLICY_DEFAULT_QUOTA_MODEM = 50 * 1000000000 # 50 GB
 
 NODE_MISSING = 'missing'  # existed in the past, but no longer listed
 NODE_DISABLED = 'disabled'  # set to STORAGE or other in the inventory
@@ -133,7 +139,10 @@ class Scheduler:
         tables = c.fetchall()
         # TODO: more sanity checks on boot
         if not set(["nodes", "node_type", "owners",
-                    "experiments", "schedule"]).issubset(set(tables)):
+                    "experiments", "schedule",
+                    "quota_owner_time", "quota_owner_data",
+                    "quota_owner_storage", "quota_node_operator_data",
+                    ]).issubset(set(tables)):
             for statement in """
 
 CREATE TABLE IF NOT EXISTS nodes (id INTEGER PRIMARY KEY ASC,
@@ -144,6 +153,20 @@ CREATE TABLE IF NOT EXISTS node_type (nodeid INTEGER NOT NULL,
 CREATE TABLE IF NOT EXISTS owners (id INTEGER PRIMARY KEY ASC,
     name TEXT UNIQUE NOT NULL, ssl_id TEXT UNIQUE NOT NULL,
     role TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS quota_owner_time (ownerid INTEGER PRIMARY KEY,
+    current INTEGER NOT NULL, reset_value INTEGER NOT NULL,
+    reset_date INTEGER NOT NULL, last_reset INTEGER);
+CREATE TABLE IF NOT EXISTS quota_owner_data (ownerid INTEGER PRIMARY KEY,
+    current INTEGER NOT NULL, reset_value INTEGER NOT NULL,
+    reset_date INTEGER NOT NULL, last_reset INTEGER);
+CREATE TABLE IF NOT EXISTS quota_owner_storage (ownerid INTEGER PRIMARY KEY,
+    current INTEGER NOT NULL, reset_value INTEGER NOT NULL,
+    reset_date INTEGER NOT NULL, last_reset INTEGER);
+CREATE TABLE IF NOT EXISTS quota_node_operator_data (
+    nodeid INTEGER, iccid INTEGER, current INTEGER NOT NULL,
+    reset_value INTEGER NOT NULL, reset_date INTEGER NOT NULL,
+    last_reset INTEGER,
+    PRIMARY KEY (nodeid, iccid));
 CREATE TABLE IF NOT EXISTS experiments (id INTEGER PRIMARY KEY ASC,
     name TEXT NOT NULL, ownerid INTEGER NOT NULL, type TEXT NOT NULL,
     script TEXT NOT NULL, start INTEGER NOT NULL, stop INTEGER NOT NULL,
@@ -154,6 +177,7 @@ CREATE TABLE IF NOT EXISTS schedule (id INTEGER PRIMARY KEY ASC,
     status TEXT NOT NULL, shared INTEGER, deployment_options TEXT,
     FOREIGN KEY (nodeid) REFERENCES nodes(id),
     FOREIGN KEY (expid) REFERENCES experiments(id));
+
 CREATE INDEX IF NOT EXISTS k_status     ON nodes(status);
 CREATE INDEX IF NOT EXISTS k_heartbeat  ON nodes(heartbeat);
 CREATE INDEX IF NOT EXISTS k_type       ON node_type(type);
@@ -231,11 +255,28 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
 
     def create_user(self, name, ssl, role):
         c = self.db().cursor()
+        today = datetime.date.today()
+        first_of_next_month =  datetime.datetime(year = today.year,
+                                                 month=today.month,
+                                                 day=1).strftime('%s')
         try:
             c.execute(
                 "INSERT INTO owners VALUES (NULL, ?, ?, ?)", (name, ssl, role))
+            userid = c.lastrowid
+            c.execute(
+                "INSERT INTO quota_owner_time VALUES (?, ?, ?, ?, ?)",
+                (userid, POLICY_DEFAULT_QUOTA_TIME, POLICY_DEFAULT_QUOTA_TIME,
+                 first_of_next_month, 0))
+            c.execute(
+                "INSERT INTO quota_owner_data VALUES (?, ?, ?, ?, ?)",
+                (userid, POLICY_DEFAULT_QUOTA_DATA, POLICY_DEFAULT_QUOTA_DATA,
+                 first_of_next_month, 0))
+            c.execute(
+                "INSERT INTO quota_owner_storage VALUES (?, ?, ?, ?, ?)",
+                (userid, POLICY_DEFAULT_QUOTA_STORAGE,
+                 POLICY_DEFAULT_QUOTA_STORAGE, first_of_next_month, 0))
             self.db().commit()
-            return c.lastrowid, None
+            return userid, None
         except db.Error as er:
             log.warning(er.message)
             return None, "Error inserting user."
