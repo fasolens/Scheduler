@@ -487,6 +487,8 @@ AND id NOT IN (
                   nodetypes="", nodes=None, results=1):
         """find the next available slot given certain criteria"""
 
+        # TODO: calculate and check total quota requirements before returning 
+
         start, duration, nodecount = int(start), int(duration), int(nodecount)
         period = self.get_scheduling_period()
         start = max(start, period[0])
@@ -576,6 +578,8 @@ SELECT DISTINCT * FROM (
 
         # TODO: any time this is called, check existing recurrent experiments
         #       for extension. This should be a quick check.
+        # TODO: also check quotas for extension
+        # TODO: calculate and check total quota requirements before allocating
 
         try:
             start, duration = int(start), int(duration)
