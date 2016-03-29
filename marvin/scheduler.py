@@ -39,15 +39,15 @@ TASK_STATUS_CODES = [
 # task may be scheduled # seconds after NOW
 POLICY_TASK_DELAY = 60
 # task must be scheduled for a minimum of # seconds
-POLICY_TASK_MIN_RUNTIME = 5 * 60
+POLICY_TASK_MIN_RUNTIME = 60
 # task may not run for a maximum of # seconds
-POLICY_TASK_MAX_RUNTIME = 24 * 3600
+POLICY_TASK_MAX_RUNTIME = 25 * 3600
 # recurrence may only happen with a minimum period of # seconds
 POLICY_TASK_MIN_RECURRENCE = 3600
 # scheduling may only happen # seconds in advance
 POLICY_SCHEDULING_PERIOD = 31 * 24 * 3600
 # scheduling may only happen # seconds after previous task
-POLICY_TASK_PADDING = 2 * 60 
+POLICY_TASK_PADDING = 2 * 60
 
 NODE_MISSING = 'missing'  # existed in the past, but no longer listed
 NODE_DISABLED = 'disabled'  # set to STORAGE or other in the inventory
