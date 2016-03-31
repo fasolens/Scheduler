@@ -51,10 +51,10 @@ POLICY_SCHEDULING_PERIOD = 31 * 24 * 3600
 POLICY_TASK_PADDING = 2 * 60
 
 # some default quotas until we have something else defined
-POLICY_DEFAULT_QUOTA_TIME = 50 * 24 * 3600 # 50 Node days
-POLICY_DEFAULT_QUOTA_DATA = 50 * 1000000000 # 50 GB
-POLICY_DEFAULT_QUOTA_STORAGE = 50 * 1000000000 # 50 GB
-POLICY_DEFAULT_QUOTA_MODEM = 50 * 1000000000 # 50 GB
+POLICY_DEFAULT_QUOTA_TIME = 50 * 24 * 3600      # 50 Node days
+POLICY_DEFAULT_QUOTA_DATA = 50 * 1000000000     # 50 GB
+POLICY_DEFAULT_QUOTA_STORAGE = 50 * 1000000000  # 50 GB
+POLICY_DEFAULT_QUOTA_MODEM = 50 * 1000000000    # 50 GB
 
 NODE_MISSING = 'missing'  # existed in the past, but no longer listed
 NODE_DISABLED = 'disabled'  # set to STORAGE or other in the inventory
@@ -80,7 +80,7 @@ class Scheduler:
 
     def __init__(self):
         self.check_db()
-        if config.get('inventory',{}).get('sync', True):
+        if config.get('inventory', {}).get('sync', True):
             self.sync_inventory()
 
     def sync_inventory(self):
@@ -95,9 +95,9 @@ class Scheduler:
         for node in nodes:
             # update if exists
             log.debug(node)
-            status = NODE_ACTIVE if node["Status"] == u'DEPLOYED'\
-                                 or node["Status"] == u'TESTING' \
-                                 else NODE_DISABLED
+            status = NODE_ACTIVE if node["Status"] == u'DEPLOYED' \
+                or node["Status"] == u'TESTING' \
+                else NODE_DISABLED
             c.execute(
                 "UPDATE nodes SET hostname = ?, status = ? WHERE id = ?",
                 (node.get("Hostname", node.get("HostName")),
@@ -111,13 +111,17 @@ class Scheduler:
                     0))
             types = []
             country = node.get('Country')
-            if country is not None: types.append('country:'+country.lower())
+            if country is not None:
+                types.append('country:'+country.lower())
             model = node.get('Model')
-            if model is not None: types.append('model:'+model.lower())
+            if model is not None:
+                types.append('model:'+model.lower())
             status = node.get('Status')
-            if status is not None: types.append(status.lower())
+            if status is not None:
+                types.append(status.lower())
 
-            c.execute("DELETE FROM node_type WHERE nodeid = ?", (node["NodeId"],))
+            c.execute("DELETE FROM node_type WHERE nodeid = ?",
+                      (node["NodeId"],))
             for type_ in types:
                 c.execute(
                     "INSERT OR IGNORE INTO node_type VALUES (?, ?)",
@@ -270,9 +274,9 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         c = self.db().cursor()
         today = datetime.date.today()
         now = int(time.time())
-        first_of_next_month =  datetime.datetime(year = today.year,
-                                                 month=(today.month % 12) + 1,
-                                                 day=1).strftime('%s')
+        first_of_next_month = datetime.datetime(year=today.year,
+                                                month=(today.month % 12) + 1,
+                                                day=1).strftime('%s')
         try:
             c.execute(
                 "INSERT INTO owners VALUES (NULL, ?, ?, ?)", (name, ssl, role))
@@ -327,24 +331,24 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
             start = now
         if stop == 0:
             stop = period[1]
-        pastquery = (
-                        " AND NOT (s.start>%i OR s.stop<%i)" % (stop, start)
-                    ) if not past else ""
+        pastq = (
+                    " AND NOT (s.start>%i OR s.stop<%i)" % (stop, start)
+                ) if not past else ""
         if schedid is not None:
             c.execute(
-                "SELECT * FROM schedule s WHERE s.id = ?" + pastquery, (schedid,))
+                "SELECT * FROM schedule s WHERE s.id = ?" + pastq, (schedid,))
         elif expid is not None:
             c.execute(
-                "SELECT * FROM schedule s WHERE s.expid = ?" + pastquery, (expid,))
+                "SELECT * FROM schedule s WHERE s.expid = ?" + pastq, (expid,))
         elif nodeid is not None:
             c.execute(
-                "SELECT * FROM schedule s WHERE s.nodeid=?" + pastquery, (nodeid,))
+                "SELECT * FROM schedule s WHERE s.nodeid=?" + pastq, (nodeid,))
         elif userid is not None:
             c.execute("SELECT * FROM schedule s, experiments t "
                       "WHERE s.expid = t.id AND t.ownerid=?" +
-                      pastquery + " ORDER BY s.start ASC", (userid,))
+                      pastq + " ORDER BY s.start ASC", (userid,))
         else:
-            c.execute("SELECT * FROM schedule s WHERE 1=1" + pastquery)
+            c.execute("SELECT * FROM schedule s WHERE 1=1" + pastq)
         taskrows = c.fetchall()
         tasks = [dict(x) for x in taskrows]
         for x in tasks:
@@ -596,15 +600,18 @@ SELECT DISTINCT * FROM (
         except Exception as ex:
             return None, "Start time and duration must be in integer seconds "\
                          "(unix timestamps)", {
-                       "code": ERROR_PARSING_FAILED
-                   }
+                             "code": ERROR_PARSING_FAILED
+                         }
         c = self.db().cursor()
         # confirm userid
-        c.execute("SELECT id FROM owners WHERE id = ?", (user,))
-        owner = c.fetchone()
-        if owner is None:
+        u = self.get_users(userid=user)
+        if u is None:
             return None, "Unknown user.", {}
-        ownerid = owner['id']
+        ownerid = u['id']
+
+        if u['quota_time'] < duration:
+            return None, "Insufficient time quota.", {'quota_time':
+                                                      u['quota_time']}
 
         try:
             opts = json.loads(options)
@@ -640,7 +647,7 @@ SELECT DISTINCT * FROM (
             error_message = type_reject
             return None, error_message, {}
 
-        if start==0:
+        if start == 0:
             start = self.get_scheduling_period()[0] + 10
         stop = start + duration
 
