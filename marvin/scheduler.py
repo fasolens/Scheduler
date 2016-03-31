@@ -56,6 +56,8 @@ POLICY_DEFAULT_QUOTA_DATA = 50 * 1000000000     # 50 GB
 POLICY_DEFAULT_QUOTA_STORAGE = 50 * 1000000000  # 50 GB
 POLICY_DEFAULT_QUOTA_MODEM = 50 * 1000000000    # 50 GB
 
+POLICY_MAX_STORAGE = 500 * 1000000              # 500 MB per node
+
 NODE_MISSING = 'missing'  # existed in the past, but no longer listed
 NODE_DISABLED = 'disabled'  # set to STORAGE or other in the inventory
 NODE_ACTIVE = 'active'  # set to DEPLOYED (or TESTING) in the inventory
@@ -614,9 +616,11 @@ SELECT DISTINCT * FROM (
 
         try:
             start, duration = int(start), int(duration)
+            nodecount = int(nodecount)
+            assert nodecount > 0
         except Exception as ex:
             return None, "Start time and duration must be in integer seconds "\
-                         "(unix timestamps)", {
+                         "(unix timestamps), nodecount an integer > 0", {
                              "code": ERROR_PARSING_FAILED
                          }
         c = self.db().cursor()
@@ -626,9 +630,10 @@ SELECT DISTINCT * FROM (
             return None, "Unknown user.", {}
         ownerid = u['id']
 
-        if u['quota_time'] < duration:
-            return None, "Insufficient time quota.", {'quota_time':
-                                                      u['quota_time']}
+        if u['quota_time'] < (duration * nodecount):
+            return None, "Insufficient time quota.", \
+                   {'quota_time': u['quota_time'],
+                    'required': duration * nodecount}
 
         try:
             opts = json.loads(options)
@@ -659,6 +664,15 @@ SELECT DISTINCT * FROM (
         opts = dict([(key, opts.get(key, None))
                     for key in scheduling_keys if key in opts])
 
+        if opts.get('storage',0) > POLICY_MAX_STORAGE:
+            return None, "Too much storage requested.", \
+                   {'max_storage': POLICY_MAX_STORAGE,
+                    'requested': opts.get('storage',0)}
+        if u['quota_storage'] < (opts.get('storage',0) * nodecount):
+            return None, "Insufficient storage quota.", \
+                   {'quota_storage': u['quota_storage'],
+                    'required': duration * nodecount}
+
         type_require, type_reject = self.parse_node_types(nodetypes)
         if type_require is None:
             error_message = type_reject
@@ -685,7 +699,6 @@ SELECT DISTINCT * FROM (
                             preselection, type_require, type_reject,
                             i[0], i[1])
 
-                nodecount = int(nodecount)
                 log.debug(
                     "Available nodes in interval (%s, %s): %s",
                     i[0],
