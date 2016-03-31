@@ -3,6 +3,7 @@
 import unittest
 import os, time
 import configuration
+import simplejson as json
 
 TEMP_DB = '/tmp/test_marvin.db'
 TEMP_LOG = '/tmp/test_marvin.log'
@@ -114,6 +115,18 @@ class SchedulerTestCase(unittest.TestCase):
                  'until': now + 100000000000
                  })
         self.assertLess(r[2]['stop'], now + 100000000000)
+
+    def test_12_find_slot(self):
+        r = self.sch.find_slot(1)
+        self.assertEqual(r[0][0]['nodecount'], 1)
+        r = self.sch.find_slot(1, nodetypes='fail')
+        self.assertIsNone(r[0])
+        r = self.sch.find_slot(1, duration=500, nodes=['1'])
+        self.assertIsNotNone(r[0])
+        self.assertEqual(r[0][0]['nodecount'], 1)
+        r = self.sch.find_slot(1, duration=500, nodes=['500','600'])
+        self.assertIsNone(r[0])
+
 
     def test_21_delete_experiment(self):
         r = self.sch.delete_experiment(3)

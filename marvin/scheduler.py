@@ -472,7 +472,7 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
     def get_available_nodes(self, nodes, type_require,
                             type_reject, start, stop):
         """ Select all active nodes not having a task scheduled between
-            start and stopfrom the set of nodes matching type_accept and
+            start and stop from the set of nodes matching type_accept and
             not type_reject
         """
 
@@ -540,16 +540,33 @@ AND id NOT IN (
             return "None", error_message
 
         # fetch all schedule segmentations (experiments starting or stopping)
-        # TODO: only take experiments matching [nodes, nodetypes] into account
         c = self.db().cursor()
+        where = "WHERE 1==1"
+        if selection is not None:
+            where += " AND nodeid IN ('" + "', '".join(nodes) + "') \n"
+        for type_and in type_require:
+            or_clause = "(" + ", ".join(["?"]*len(type_and)) + ")"
+            where += "  AND EXISTS (SELECT nodeid FROM node_type " \
+                     "WHERE type IN "+or_clause+") \n"
+        for type_and in type_reject:
+            or_clause = "(" + ", ".join(["?"]*len(type_and)) + ")"
+            where += "  AND NOT EXISTS (SELECT nodeid FROM node_type "\
+                     "WHERE type IN "+or_clause+") \n"
+
         query = """
 SELECT DISTINCT * FROM (
-    SELECT start AS t FROM experiments UNION
-    SELECT stop  AS t FROM experiments
+    SELECT start - ? AS t FROM schedule %s UNION
+    SELECT stop + ?  AS t FROM schedule %s
 ) WHERE t >= ? AND t < ? ORDER BY t ASC;
-                """
-        c.execute(query, (start, stop))
+                """ % (where, where)
+        c.execute(query, list(chain.from_iterable(type_require)) +
+                         list(chain.from_iterable(type_reject)) +
+                         list(chain.from_iterable(type_require)) +
+                         list(chain.from_iterable(type_reject)) +
+                         [POLICY_TASK_PADDING+1, POLICY_TASK_PADDING+1,
+                          start, stop])
         segments = [start] + [x[0] for x in c.fetchall()] + [stop]
+        segments.sort()
 
         slots = []
 
@@ -558,7 +575,7 @@ SELECT DISTINCT * FROM (
             c = 1
 
             while segments[c]-s0 < duration:
-                if c == len(segments)-1:
+                if c == len(segments):
                     return None, "Could not find available time slot "\
                                  "matching these criteria."
                 c += 1
