@@ -10,6 +10,7 @@ from inventory import inventory_api
 import configuration
 import simplejson as json
 from itertools import chain
+import datetime
 
 config = configuration.select('marvinctld')
 
