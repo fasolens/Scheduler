@@ -486,11 +486,11 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         query += preselection
         for type_and in type_require:
             or_clause = "(" + ", ".join(["?"]*len(type_and)) + ")"
-            query += "  AND EXISTS (SELECT nodeid FROM node_type " \
+            query += "  AND id IN (SELECT nodeid FROM node_type " \
                      "WHERE type IN "+or_clause+") \n"
         for type_and in type_reject:
             or_clause = "(" + ", ".join(["?"]*len(type_and)) + ")"
-            query += "  AND NOT EXISTS (SELECT nodeid FROM node_type "\
+            query += "  AND id NOT IN (SELECT nodeid FROM node_type "\
                      "WHERE type IN "+or_clause+") \n"
         query += """
 AND id NOT IN (
@@ -546,11 +546,11 @@ AND id NOT IN (
             where += " AND nodeid IN ('" + "', '".join(nodes) + "') \n"
         for type_and in type_require:
             or_clause = "(" + ", ".join(["?"]*len(type_and)) + ")"
-            where += "  AND EXISTS (SELECT nodeid FROM node_type " \
+            where += "  AND nodeid IN (SELECT nodeid FROM node_type " \
                      "WHERE type IN "+or_clause+") \n"
         for type_and in type_reject:
             or_clause = "(" + ", ".join(["?"]*len(type_and)) + ")"
-            where += "  AND NOT EXISTS (SELECT nodeid FROM node_type "\
+            where += "  AND nodeid NOT IN (SELECT nodeid FROM node_type "\
                      "WHERE type IN "+or_clause+") \n"
 
         query = """
@@ -559,12 +559,13 @@ SELECT DISTINCT * FROM (
     SELECT stop + ?  AS t FROM schedule %s
 ) WHERE t >= ? AND t < ? ORDER BY t ASC;
                 """ % (where, where)
-        c.execute(query, list(chain.from_iterable(type_require)) +
-                         list(chain.from_iterable(type_reject)) +
+        c.execute(query, [POLICY_TASK_PADDING + 1] +
                          list(chain.from_iterable(type_require)) +
                          list(chain.from_iterable(type_reject)) +
-                         [POLICY_TASK_PADDING+1, POLICY_TASK_PADDING+1,
-                          start, stop])
+                         [POLICY_TASK_PADDING + 1] +
+                         list(chain.from_iterable(type_require)) +
+                         list(chain.from_iterable(type_reject)) +
+                         [start, stop])
         segments = [start] + [x[0] for x in c.fetchall()] + [stop]
         segments.sort()
 
