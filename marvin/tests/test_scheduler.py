@@ -90,8 +90,26 @@ class SchedulerTestCase(unittest.TestCase):
                               {'storage': 501 * 1000000})
         self.assertEqual(r[2]['requested'], 501 * 1000000)
 
-    def test_11_delete_experiment(self):
-        r = self.sch.delete_experiment(2)
+    def test_11_recurrence(self):
+        now = int(time.time())
+        r = self.sch.allocate(1,'test', now + 1500, 500, 1, 'test', '...',
+                {'recurrence':'simple',
+                 'period': 3600,
+                 'until': now + 1500 + 3600 * 2 + 500
+                })
+        self.assertEqual(r[2]['nodecount'], 1)
+        self.assertEqual(r[2]['intervals'], 3)
+        # check that the tasks are different, and of equal length
+        t = self.sch.get_schedule(expid = 2)
+        self.assertGreater(t[1]['start'], t[0]['start'])
+        self.assertGreater(t[1]['stop'], t[0]['stop'])
+        self.assertGreater(t[0]['stop'], t[0]['start'])
+        self.assertGreater(t[1]['stop'], t[1]['start'])
+        self.assertEqual(t[0]['stop'] - t[0]['start'],
+                         t[1]['stop'] - t[1]['start'],)
+
+    def test_21_delete_experiment(self):
+        r = self.sch.delete_experiment(3)
         self.assertEqual(r[0],0)
         r = self.sch.delete_experiment(1)
         self.assertEqual(r[0],1)
