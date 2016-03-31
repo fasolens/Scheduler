@@ -156,17 +156,21 @@ CREATE TABLE IF NOT EXISTS owners (id INTEGER PRIMARY KEY ASC,
     role TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS quota_owner_time (ownerid INTEGER PRIMARY KEY,
     current INTEGER NOT NULL, reset_value INTEGER NOT NULL,
-    reset_date INTEGER NOT NULL, last_reset INTEGER);
+    reset_date INTEGER NOT NULL, last_reset INTEGER,
+    FOREIGN KEY (ownerid) REFERENCES owners(id));
 CREATE TABLE IF NOT EXISTS quota_owner_data (ownerid INTEGER PRIMARY KEY,
     current INTEGER NOT NULL, reset_value INTEGER NOT NULL,
-    reset_date INTEGER NOT NULL, last_reset INTEGER);
+    reset_date INTEGER NOT NULL, last_reset INTEGER,
+    FOREIGN KEY (ownerid) REFERENCES owners(id));
 CREATE TABLE IF NOT EXISTS quota_owner_storage (ownerid INTEGER PRIMARY KEY,
     current INTEGER NOT NULL, reset_value INTEGER NOT NULL,
-    reset_date INTEGER NOT NULL, last_reset INTEGER);
+    reset_date INTEGER NOT NULL, last_reset INTEGER,
+    FOREIGN KEY (ownerid) REFERENCES owners(id));
 CREATE TABLE IF NOT EXISTS quota_node_operator_data (
     nodeid INTEGER, iccid INTEGER, current INTEGER NOT NULL,
     reset_value INTEGER NOT NULL, reset_date INTEGER NOT NULL,
     last_reset INTEGER,
+    FOREIGN KEY (nodeid) REFERENCES nodes(id),
     PRIMARY KEY (nodeid, iccid));
 CREATE TABLE IF NOT EXISTS experiments (id INTEGER PRIMARY KEY ASC,
     name TEXT NOT NULL, ownerid INTEGER NOT NULL, type TEXT NOT NULL,
