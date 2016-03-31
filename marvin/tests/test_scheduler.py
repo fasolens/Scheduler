@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
-import os
+import os, time
 import configuration
 
 TEMP_DB = '/tmp/test_marvin.db'
@@ -65,7 +65,37 @@ class SchedulerTestCase(unittest.TestCase):
         p = self.sch.get_scheduling_period()
         self.assertGreater(p[1]-p[0], 0)
 
-    # TODO: test the actual scheduling
+    def test_10_allocate(self):
+        now = int(time.time())
+        # basic a few minutes into the future
+        r = self.sch.allocate(1,'test', now + 500, 500, 1, 'test', '...', {})
+        self.assertEqual(r[2]['nodecount'], 1)
+        # not available
+        r = self.sch.allocate(1,'test', now + 500, 500, 1, 'test', '...', {})
+        self.assertEqual(r[2]['available'], 0)
+        # too soon
+        r = self.sch.allocate(1,'test', now, 500, 1, 'test', '...', {})
+        self.assertIsNone(r[0])
+        # too short
+        r = self.sch.allocate(1,'test', now + 1500, 1, 1, 'test', '...', {})
+        self.assertIsNone(r[0])
+        # zero node count
+        r = self.sch.allocate(1,'test', now + 1500, 500, 0, 'test', '...', {})
+        self.assertIsNone(r[0])
+        # too many nodes
+        r = self.sch.allocate(1,'test', now + 1500, 500, 2, 'test', '...', {})
+        self.assertEqual(r[2]['available'], 1)
+        # too much storage requested
+        r = self.sch.allocate(1,'test', now + 1500, 500, 1, 'test', '...',
+                              {'storage': 501 * 1000000})
+        self.assertEqual(r[2]['requested'], 501 * 1000000)
+
+    def test_11_delete_experiment(self):
+        r = self.sch.delete_experiment(2)
+        self.assertEqual(r[0],0)
+        r = self.sch.delete_experiment(1)
+        self.assertEqual(r[0],1)
+
 
     def test_99_cleanup(self):
         os.unlink(TEMP_DB)

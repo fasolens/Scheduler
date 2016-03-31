@@ -56,7 +56,7 @@ POLICY_DEFAULT_QUOTA_DATA = 50 * 1000000000     # 50 GB
 POLICY_DEFAULT_QUOTA_STORAGE = 50 * 1000000000  # 50 GB
 POLICY_DEFAULT_QUOTA_MODEM = 50 * 1000000000    # 50 GB
 
-POLICY_MAX_STORAGE = 500 * 1000000              # 500 MB per node
+POLICY_TASK_MAX_STORAGE = 500 * 1000000              # 500 MB per node
 
 NODE_MISSING = 'missing'  # existed in the past, but no longer listed
 NODE_DISABLED = 'disabled'  # set to STORAGE or other in the inventory
@@ -628,6 +628,7 @@ SELECT DISTINCT * FROM (
         u = self.get_users(userid=user)
         if u is None:
             return None, "Unknown user.", {}
+        u = u[0]
         ownerid = u['id']
 
         if u['quota_time'] < (duration * nodecount):
@@ -636,7 +637,7 @@ SELECT DISTINCT * FROM (
                     'required': duration * nodecount}
 
         try:
-            opts = json.loads(options)
+            opts = options if type(options) is dict else json.loads(options)
         except:
             try:
                 opts = dict([opt.split("=")
@@ -658,20 +659,26 @@ SELECT DISTINCT * FROM (
             'storage',
             'interfaces',
             'restart']
-        scheduling_keys = ['shared', 'recurrence', 'period', 'until']
+        scheduling_keys = [
+            'shared',
+            'recurrence',
+            'period',
+            'until',
+            'storage']
         deployment_opts = dict([(key, opts.get(key, None))
                                for key in deployment_keys if key in opts])
         opts = dict([(key, opts.get(key, None))
                     for key in scheduling_keys if key in opts])
 
-        if opts.get('storage',0) > POLICY_MAX_STORAGE:
+        req_storage = int(opts.get('storage', 0))
+        if req_storage > POLICY_TASK_MAX_STORAGE:
             return None, "Too much storage requested.", \
-                   {'max_storage': POLICY_MAX_STORAGE,
-                    'requested': opts.get('storage',0)}
-        if u['quota_storage'] < (opts.get('storage',0) * nodecount):
+                   {'max_storage': POLICY_TASK_MAX_STORAGE,
+                    'requested': req_storage}
+        if u['quota_storage'] < (req_storage * nodecount):
             return None, "Insufficient storage quota.", \
                    {'quota_storage': u['quota_storage'],
-                    'required': duration * nodecount}
+                    'required': req_storage * nodecount}
 
         type_require, type_reject = self.parse_node_types(nodetypes)
         if type_require is None:
@@ -724,6 +731,13 @@ SELECT DISTINCT * FROM (
                               (node['id'], expid, i[0], i[1], 'defined',
                                shared, json.dumps(deployment_opts)))
 
+                c.execute("UPDATE quota_owner_time SET current = ? "
+                          "WHERE ownerid = ?",
+                          (u['quota_time'] - (duration * nodecount), ownerid))
+                c.execute("UPDATE quota_owner_storage SET current = ? "
+                          "WHERE ownerid = ?",
+                          (u['quota_storage'] - (req_storage * nodecount),
+                           ownerid))
             self.db().commit()
             return expid, "Created experiment %s on %s nodes " \
                           "as %s intervals." % \
@@ -735,15 +749,16 @@ SELECT DISTINCT * FROM (
         except db.Error as er:
             # NOTE: automatic rollback is triggered in case of an exception
             log.error(er.message)
-            return None, "Task creation failed.", {}
+            return None, "Task creation failed.", {'error': er.message}
 
     def delete_experiment(self, expid):
         c = self.db().cursor()
         c.execute("SELECT DISTINCT status FROM schedule WHERE expid = ?",
                   (expid,))
-        if c.rowcount == 0:
-            return 0, "Could not find experiment id.", {}
-        statuses = set([x[0] for x in c.fetchall()])
+        result = c.fetchall()
+        if len(result) == 0:
+            return 0, "Could not find experiment id %s." % expid, {}
+        statuses = set([x[0] for x in result])
         if set(['defined']) == statuses or set(['canceled']) == statuses:
             c.execute("DELETE FROM schedule WHERE expid = ?", (expid,))
             c.execute("DELETE FROM experiments WHERE id = ?", (expid,))
