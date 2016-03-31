@@ -233,12 +233,20 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
 
     def get_users(self, userid=None, ssl=None):
         c = self.db().cursor()
+        query = """SELECT o.*, t.current as quota_time,
+                               d.current as quota_data,
+                               s.current as quota_storage
+            FROM
+            owners o JOIN quota_owner_time t ON t.ownerid = o.id
+                     JOIN quota_owner_data d ON d.ownerid = o.id
+                     JOIN quota_owner_storage s ON s.ownerid = o.id
+                """
         if userid is not None:
-            c.execute("SELECT * FROM owners where id = ?", (userid,))
+            c.execute(query + " where id = ?", (userid,))
         elif ssl is not None:
-            c.execute("SELECT * FROM owners where ssl_id = ?", (ssl,))
+            c.execute(query + " where ssl_id = ?", (ssl,))
         else:
-            c.execute("SELECT * FROM owners")
+            c.execute(query)
         userrows = c.fetchall()
         users = [dict(x) for x in userrows] or None
         return users
@@ -462,7 +470,6 @@ AND id NOT IN (
     WHERE shared = 0 AND NOT ((s.stop + ? < ?) OR (s.start - ? > ?))
 )
                  """
-        print query
         c.execute(query, [NODE_ACTIVE] +
                   list(chain.from_iterable(type_require)) +
                   list(chain.from_iterable(type_reject)) +
@@ -487,8 +494,6 @@ AND id NOT IN (
     def find_slot(self, nodecount=1, duration=1, start=0,
                   nodetypes="", nodes=None, results=1):
         """find the next available slot given certain criteria"""
-
-        # TODO: calculate and check total quota requirements before returning 
 
         start, duration, nodecount = int(start), int(duration), int(nodecount)
         period = self.get_scheduling_period()

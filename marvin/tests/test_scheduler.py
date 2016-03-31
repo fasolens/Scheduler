@@ -28,6 +28,7 @@ class SchedulerTestCase(unittest.TestCase):
         userid, error = self.sch.create_user('admin','admin','admin')
         self.assertIsNotNone(userid)
         user = self.sch.get_users(ssl='admin')
+        self.assertIsNotNone(user)
         self.assertEqual(user[0].get('id',None), 1)
         role = self.sch.get_role(ssl='admin')
         self.assertEqual(role, 'admin')
