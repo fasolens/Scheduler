@@ -107,6 +107,13 @@ class SchedulerTestCase(unittest.TestCase):
         self.assertGreater(t[1]['stop'], t[1]['start'])
         self.assertEqual(t[0]['stop'] - t[0]['start'],
                          t[1]['stop'] - t[1]['start'],)
+        # truncating until
+        r = self.sch.allocate(1,'test', now + 1500, 500, 1, 'test', '...',
+                {'recurrence':'simple',
+                 'period': 3600,
+                 'until': now + 100000000000
+                 })
+        self.assertLess(r[2]['stop'], now + 100000000000)
 
     def test_21_delete_experiment(self):
         r = self.sch.delete_experiment(3)
