@@ -239,7 +239,21 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
             log.warning(er.message)
             return "Error updating node."
 
+    def check_quotas(self):
+        now = int(time.time())
+        c = self.db().cursor()
+        for table in ['quota_owner_time', 'quota_owner_data',
+                      'quota_owner_storage']:
+            c.execute("""UPDATE %s SET current = reset_value,
+                                       reset_date = ?,
+                                       last_reset = ?
+                         WHERE reset_date < ?""" % table,
+                      (self.first_of_next_month(), now, now))
+        self.db().commit()
+
     def get_users(self, userid=None, ssl=None):
+        self.check_quotas()
+
         c = self.db().cursor()
         query = """SELECT o.*, t.current as quota_time,
                                d.current as quota_data,
@@ -270,13 +284,17 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         else:
             return None
 
+    def first_of_next_month(self):
+        today = datetime.date.today()
+        return datetime.datetime(year=today.year,
+                                 month=(today.month % 12) + 1,
+                                 day=1).strftime('%s')
+
     def create_user(self, name, ssl, role):
         c = self.db().cursor()
-        today = datetime.date.today()
         now = int(time.time())
-        first_of_next_month = datetime.datetime(year=today.year,
-                                                month=(today.month % 12) + 1,
-                                                day=1).strftime('%s')
+        first_of_next_month = self.first_of_next_month()
+
         try:
             c.execute(
                 "INSERT INTO owners VALUES (NULL, ?, ?, ?)", (name, ssl, role))
@@ -592,7 +610,6 @@ SELECT DISTINCT * FROM (
 
         # TODO: any time this is called, check existing recurrent experiments
         #       for extension. This should be a quick check.
-        # TODO: also check quotas for extension
         # TODO: calculate and check total quota requirements before allocating
 
         try:
