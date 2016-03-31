@@ -31,7 +31,7 @@ docker run -d --cgroup-parent=monroe\
        --guid ${SCHEDID}.${NODEID}.${COUNT}
 
 # CID: the runtime container ID
-CID=$(docker ps --no-trunc | grep $CONTAINER | awk '{print $1}')
+CID=$(docker ps --no-trunc | grep $CONTAINER | awk '{print $1}' | head -n 1)
 
 if [ -z "$CID" ]; then
     echo 'failed' > /outdir/$SCHEDID.status

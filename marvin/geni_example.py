@@ -7,16 +7,15 @@ import simplejson as json
 
 s = xmlrpclib.ServerProxy('http://localhost:9097')
 
-if False:
-  print "=== GetVersion ==="
-  print json.dumps(s.GetVersion(), sort_keys=True, indent='  ')
-  
-  print "=== ListResources ==="
-  resources = s.ListResources({}, {})
-  print json.dumps(resources, sort_keys=True, indent='  ')
-  
-  print "=== Readable XML ==="
-  print xml.dom.minidom.parseString(resources['value']).toprettyxml()
+print "=== GetVersion ==="
+print json.dumps(s.GetVersion(), sort_keys=True, indent='  ')
+
+print "=== ListResources ==="
+resources = s.ListResources({}, {})
+print json.dumps(resources, sort_keys=True, indent='  ')
+
+print "=== Readable XML ==="
+print xml.dom.minidom.parseString(resources['value']).toprettyxml()
 
 print "=== Allocate ==="
 # slice_urn, credentials, rspecxml, options

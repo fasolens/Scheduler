@@ -10,6 +10,7 @@ from inventory import inventory_api
 import configuration
 import simplejson as json
 from itertools import chain
+import datetime
 
 config = configuration.select('marvinctld')
 
@@ -49,6 +50,14 @@ POLICY_SCHEDULING_PERIOD = 31 * 24 * 3600
 # scheduling may only happen # seconds after previous task
 POLICY_TASK_PADDING = 2 * 60
 
+# some default quotas until we have something else defined
+POLICY_DEFAULT_QUOTA_TIME = 50 * 24 * 3600      # 50 Node days
+POLICY_DEFAULT_QUOTA_DATA = 50 * 1000000000     # 50 GB
+POLICY_DEFAULT_QUOTA_STORAGE = 50 * 1000000000  # 50 GB
+POLICY_DEFAULT_QUOTA_MODEM = 50 * 1000000000    # 50 GB
+
+POLICY_TASK_MAX_STORAGE = 500 * 1000000              # 500 MB per node
+
 NODE_MISSING = 'missing'  # existed in the past, but no longer listed
 NODE_DISABLED = 'disabled'  # set to STORAGE or other in the inventory
 NODE_ACTIVE = 'active'  # set to DEPLOYED (or TESTING) in the inventory
@@ -73,7 +82,7 @@ class Scheduler:
 
     def __init__(self):
         self.check_db()
-        if config.get('inventory',{}).get('sync', True):
+        if config.get('inventory', {}).get('sync', True):
             self.sync_inventory()
 
     def sync_inventory(self):
@@ -88,9 +97,9 @@ class Scheduler:
         for node in nodes:
             # update if exists
             log.debug(node)
-            status = NODE_ACTIVE if node["Status"] == u'DEPLOYED'\
-                                 or node["Status"] == u'TESTING' \
-                                 else NODE_DISABLED
+            status = NODE_ACTIVE if node["Status"] == u'DEPLOYED' \
+                or node["Status"] == u'TESTING' \
+                else NODE_DISABLED
             c.execute(
                 "UPDATE nodes SET hostname = ?, status = ? WHERE id = ?",
                 (node.get("Hostname", node.get("HostName")),
@@ -104,13 +113,17 @@ class Scheduler:
                     0))
             types = []
             country = node.get('Country')
-            if country is not None: types.append('country:'+country.lower())
+            if country is not None:
+                types.append('country:'+country.lower())
             model = node.get('Model')
-            if model is not None: types.append('model:'+model.lower())
+            if model is not None:
+                types.append('model:'+model.lower())
             status = node.get('Status')
-            if status is not None: types.append(status.lower())
+            if status is not None:
+                types.append(status.lower())
 
-            c.execute("DELETE FROM node_type WHERE nodeid = ?", (node["NodeId"],))
+            c.execute("DELETE FROM node_type WHERE nodeid = ?",
+                      (node["NodeId"],))
             for type_ in types:
                 c.execute(
                     "INSERT OR IGNORE INTO node_type VALUES (?, ?)",
@@ -133,7 +146,10 @@ class Scheduler:
         tables = c.fetchall()
         # TODO: more sanity checks on boot
         if not set(["nodes", "node_type", "owners",
-                    "experiments", "schedule"]).issubset(set(tables)):
+                    "experiments", "schedule",
+                    "quota_owner_time", "quota_owner_data",
+                    "quota_owner_storage", "quota_node_operator_data",
+                    ]).issubset(set(tables)):
             for statement in """
 
 CREATE TABLE IF NOT EXISTS nodes (id INTEGER PRIMARY KEY ASC,
@@ -144,6 +160,24 @@ CREATE TABLE IF NOT EXISTS node_type (nodeid INTEGER NOT NULL,
 CREATE TABLE IF NOT EXISTS owners (id INTEGER PRIMARY KEY ASC,
     name TEXT UNIQUE NOT NULL, ssl_id TEXT UNIQUE NOT NULL,
     role TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS quota_owner_time (ownerid INTEGER PRIMARY KEY,
+    current INTEGER NOT NULL, reset_value INTEGER NOT NULL,
+    reset_date INTEGER NOT NULL, last_reset INTEGER,
+    FOREIGN KEY (ownerid) REFERENCES owners(id));
+CREATE TABLE IF NOT EXISTS quota_owner_data (ownerid INTEGER PRIMARY KEY,
+    current INTEGER NOT NULL, reset_value INTEGER NOT NULL,
+    reset_date INTEGER NOT NULL, last_reset INTEGER,
+    FOREIGN KEY (ownerid) REFERENCES owners(id));
+CREATE TABLE IF NOT EXISTS quota_owner_storage (ownerid INTEGER PRIMARY KEY,
+    current INTEGER NOT NULL, reset_value INTEGER NOT NULL,
+    reset_date INTEGER NOT NULL, last_reset INTEGER,
+    FOREIGN KEY (ownerid) REFERENCES owners(id));
+CREATE TABLE IF NOT EXISTS quota_node_operator_data (
+    nodeid INTEGER, iccid INTEGER, current INTEGER NOT NULL,
+    reset_value INTEGER NOT NULL, reset_date INTEGER NOT NULL,
+    last_reset INTEGER,
+    FOREIGN KEY (nodeid) REFERENCES nodes(id),
+    PRIMARY KEY (nodeid, iccid));
 CREATE TABLE IF NOT EXISTS experiments (id INTEGER PRIMARY KEY ASC,
     name TEXT NOT NULL, ownerid INTEGER NOT NULL, type TEXT NOT NULL,
     script TEXT NOT NULL, start INTEGER NOT NULL, stop INTEGER NOT NULL,
@@ -154,6 +188,7 @@ CREATE TABLE IF NOT EXISTS schedule (id INTEGER PRIMARY KEY ASC,
     status TEXT NOT NULL, shared INTEGER, deployment_options TEXT,
     FOREIGN KEY (nodeid) REFERENCES nodes(id),
     FOREIGN KEY (expid) REFERENCES experiments(id));
+
 CREATE INDEX IF NOT EXISTS k_status     ON nodes(status);
 CREATE INDEX IF NOT EXISTS k_heartbeat  ON nodes(heartbeat);
 CREATE INDEX IF NOT EXISTS k_type       ON node_type(type);
@@ -206,14 +241,36 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
             log.warning(er.message)
             return "Error updating node."
 
-    def get_users(self, userid=None, ssl=None):
+    def check_quotas(self):
+        now = int(time.time())
         c = self.db().cursor()
+        for table in ['quota_owner_time', 'quota_owner_data',
+                      'quota_owner_storage']:
+            c.execute("""UPDATE %s SET current = reset_value,
+                                       reset_date = ?,
+                                       last_reset = ?
+                         WHERE reset_date < ?""" % table,
+                      (self.first_of_next_month(), now, now))
+        self.db().commit()
+
+    def get_users(self, userid=None, ssl=None):
+        self.check_quotas()
+
+        c = self.db().cursor()
+        query = """SELECT o.*, t.current as quota_time,
+                               d.current as quota_data,
+                               s.current as quota_storage
+            FROM
+            owners o JOIN quota_owner_time t ON t.ownerid = o.id
+                     JOIN quota_owner_data d ON d.ownerid = o.id
+                     JOIN quota_owner_storage s ON s.ownerid = o.id
+                """
         if userid is not None:
-            c.execute("SELECT * FROM owners where id = ?", (userid,))
+            c.execute(query + " where id = ?", (userid,))
         elif ssl is not None:
-            c.execute("SELECT * FROM owners where ssl_id = ?", (ssl,))
+            c.execute(query + " where ssl_id = ?", (ssl,))
         else:
-            c.execute("SELECT * FROM owners")
+            c.execute(query)
         userrows = c.fetchall()
         users = [dict(x) for x in userrows] or None
         return users
@@ -229,13 +286,35 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         else:
             return None
 
+    def first_of_next_month(self):
+        today = datetime.date.today()
+        return datetime.datetime(year=today.year,
+                                 month=(today.month % 12) + 1,
+                                 day=1).strftime('%s')
+
     def create_user(self, name, ssl, role):
         c = self.db().cursor()
+        now = int(time.time())
+        first_of_next_month = self.first_of_next_month()
+
         try:
             c.execute(
                 "INSERT INTO owners VALUES (NULL, ?, ?, ?)", (name, ssl, role))
+            userid = c.lastrowid
+            c.execute(
+                "INSERT INTO quota_owner_time VALUES (?, ?, ?, ?, ?)",
+                (userid, POLICY_DEFAULT_QUOTA_TIME, POLICY_DEFAULT_QUOTA_TIME,
+                 first_of_next_month, now))
+            c.execute(
+                "INSERT INTO quota_owner_data VALUES (?, ?, ?, ?, ?)",
+                (userid, POLICY_DEFAULT_QUOTA_DATA, POLICY_DEFAULT_QUOTA_DATA,
+                 first_of_next_month, now))
+            c.execute(
+                "INSERT INTO quota_owner_storage VALUES (?, ?, ?, ?, ?)",
+                (userid, POLICY_DEFAULT_QUOTA_STORAGE,
+                 POLICY_DEFAULT_QUOTA_STORAGE, first_of_next_month, now))
             self.db().commit()
-            return c.lastrowid, None
+            return userid, None
         except db.Error as er:
             log.warning(er.message)
             return None, "Error inserting user."
@@ -272,24 +351,24 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
             start = now
         if stop == 0:
             stop = period[1]
-        pastquery = (
-                        " AND NOT (s.start>%i OR s.stop<%i)" % (stop, start)
-                    ) if not past else ""
+        pastq = (
+                    " AND NOT (s.start>%i OR s.stop<%i)" % (stop, start)
+                ) if not past else ""
         if schedid is not None:
             c.execute(
-                "SELECT * FROM schedule s WHERE s.id = ?" + pastquery, (schedid,))
+                "SELECT * FROM schedule s WHERE s.id = ?" + pastq, (schedid,))
         elif expid is not None:
             c.execute(
-                "SELECT * FROM schedule s WHERE s.expid = ?" + pastquery, (expid,))
+                "SELECT * FROM schedule s WHERE s.expid = ?" + pastq, (expid,))
         elif nodeid is not None:
             c.execute(
-                "SELECT * FROM schedule s WHERE s.nodeid=?" + pastquery, (nodeid,))
+                "SELECT * FROM schedule s WHERE s.nodeid=?" + pastq, (nodeid,))
         elif userid is not None:
             c.execute("SELECT * FROM schedule s, experiments t "
                       "WHERE s.expid = t.id AND t.ownerid=?" +
-                      pastquery + " ORDER BY s.start ASC", (userid,))
+                      pastq + " ORDER BY s.start ASC", (userid,))
         else:
-            c.execute("SELECT * FROM schedule s WHERE 1=1" + pastquery)
+            c.execute("SELECT * FROM schedule s WHERE 1=1" + pastq)
         taskrows = c.fetchall()
         tasks = [dict(x) for x in taskrows]
         for x in tasks:
@@ -419,7 +498,6 @@ AND id NOT IN (
     WHERE shared = 0 AND NOT ((s.stop + ? < ?) OR (s.start - ? > ?))
 )
                  """
-        print query
         c.execute(query, [NODE_ACTIVE] +
                   list(chain.from_iterable(type_require)) +
                   list(chain.from_iterable(type_reject)) +
@@ -534,24 +612,32 @@ SELECT DISTINCT * FROM (
 
         # TODO: any time this is called, check existing recurrent experiments
         #       for extension. This should be a quick check.
+        # TODO: calculate and check total quota requirements before allocating
 
         try:
             start, duration = int(start), int(duration)
+            nodecount = int(nodecount)
+            assert nodecount > 0
         except Exception as ex:
             return None, "Start time and duration must be in integer seconds "\
-                         "(unix timestamps)", {
-                       "code": ERROR_PARSING_FAILED
-                   }
+                         "(unix timestamps), nodecount an integer > 0", {
+                             "code": ERROR_PARSING_FAILED
+                         }
         c = self.db().cursor()
         # confirm userid
-        c.execute("SELECT id FROM owners WHERE id = ?", (user,))
-        owner = c.fetchone()
-        if owner is None:
+        u = self.get_users(userid=user)
+        if u is None:
             return None, "Unknown user.", {}
-        ownerid = owner['id']
+        u = u[0]
+        ownerid = u['id']
+
+        if u['quota_time'] < (duration * nodecount):
+            return None, "Insufficient time quota.", \
+                   {'quota_time': u['quota_time'],
+                    'required': duration * nodecount}
 
         try:
-            opts = json.loads(options)
+            opts = options if type(options) is dict else json.loads(options)
         except:
             try:
                 opts = dict([opt.split("=")
@@ -573,18 +659,33 @@ SELECT DISTINCT * FROM (
             'storage',
             'interfaces',
             'restart']
-        scheduling_keys = ['shared', 'recurrence', 'period', 'until']
+        scheduling_keys = [
+            'shared',
+            'recurrence',
+            'period',
+            'until',
+            'storage']
         deployment_opts = dict([(key, opts.get(key, None))
                                for key in deployment_keys if key in opts])
         opts = dict([(key, opts.get(key, None))
                     for key in scheduling_keys if key in opts])
+
+        req_storage = int(opts.get('storage', 0))
+        if req_storage > POLICY_TASK_MAX_STORAGE:
+            return None, "Too much storage requested.", \
+                   {'max_storage': POLICY_TASK_MAX_STORAGE,
+                    'requested': req_storage}
+        if u['quota_storage'] < (req_storage * nodecount):
+            return None, "Insufficient storage quota.", \
+                   {'quota_storage': u['quota_storage'],
+                    'required': req_storage * nodecount}
 
         type_require, type_reject = self.parse_node_types(nodetypes)
         if type_require is None:
             error_message = type_reject
             return None, error_message, {}
 
-        if start==0:
+        if start == 0:
             start = self.get_scheduling_period()[0] + 10
         stop = start + duration
 
@@ -605,7 +706,6 @@ SELECT DISTINCT * FROM (
                             preselection, type_require, type_reject,
                             i[0], i[1])
 
-                nodecount = int(nodecount)
                 log.debug(
                     "Available nodes in interval (%s, %s): %s",
                     i[0],
@@ -631,6 +731,13 @@ SELECT DISTINCT * FROM (
                               (node['id'], expid, i[0], i[1], 'defined',
                                shared, json.dumps(deployment_opts)))
 
+                c.execute("UPDATE quota_owner_time SET current = ? "
+                          "WHERE ownerid = ?",
+                          (u['quota_time'] - (duration * nodecount), ownerid))
+                c.execute("UPDATE quota_owner_storage SET current = ? "
+                          "WHERE ownerid = ?",
+                          (u['quota_storage'] - (req_storage * nodecount),
+                           ownerid))
             self.db().commit()
             return expid, "Created experiment %s on %s nodes " \
                           "as %s intervals." % \
@@ -642,15 +749,16 @@ SELECT DISTINCT * FROM (
         except db.Error as er:
             # NOTE: automatic rollback is triggered in case of an exception
             log.error(er.message)
-            return None, "Task creation failed.", {}
+            return None, "Task creation failed.", {'error': er.message}
 
     def delete_experiment(self, expid):
         c = self.db().cursor()
         c.execute("SELECT DISTINCT status FROM schedule WHERE expid = ?",
                   (expid,))
-        if c.rowcount == 0:
-            return 0, "Could not find experiment id.", {}
-        statuses = set([x[0] for x in c.fetchall()])
+        result = c.fetchall()
+        if len(result) == 0:
+            return 0, "Could not find experiment id %s." % expid, {}
+        statuses = set([x[0] for x in result])
         if set(['defined']) == statuses or set(['canceled']) == statuses:
             c.execute("DELETE FROM schedule WHERE expid = ?", (expid,))
             c.execute("DELETE FROM experiments WHERE id = ?", (expid,))
