@@ -10,17 +10,20 @@ TEMP_LOG = '/tmp/test_marvin.log'
 
 
 class SchedulerTestCase(unittest.TestCase):
+    sch = None
+
     def __init__(self, *args, **kwargs):
         super(SchedulerTestCase, self).__init__(*args, **kwargs)
 
-        configuration.select('marvinctld',
-                             preset={'inventory': {'sync': False},
-                                     'database': TEMP_DB,
-                                     'log': {'level': 50,
-                                             'file': TEMP_LOG}})
+        if self.sch is None:
+            configuration.select('marvinctld',
+                                 preset={'inventory': {'sync': False},
+                                         'database': TEMP_DB,
+                                         'log': {'level': 50,
+                                                 'file': TEMP_LOG}})
 
-        from scheduler import Scheduler
-        self.sch = Scheduler()
+            from scheduler import Scheduler
+            self.sch = Scheduler()
 
     def test_00_db_exists(self):
         self.assertTrue(os.path.isfile(TEMP_DB))
@@ -76,6 +79,9 @@ class SchedulerTestCase(unittest.TestCase):
         self.assertEqual(r[2]['available'], 0)
         # too soon
         r = self.sch.allocate(1,'test', now, 500, 1, 'test', '...', {})
+        self.assertIsNone(r[0])
+        # too soon after the previous experiment
+        r = self.sch.allocate(1,'test', now + 1000, 500, 1, 'test', '...', {})
         self.assertIsNone(r[0])
         # too short
         r = self.sch.allocate(1,'test', now + 1500, 1, 1, 'test', '...', {})

@@ -2,6 +2,8 @@
 
 import unittest
 from test_scheduler import *
+from test_timing import *
 
-suite = unittest.TestLoader().loadTestsFromTestCase(SchedulerTestCase)
-unittest.TextTestRunner(verbosity=2).run(suite)
+for test in [SchedulerTestCase, TimingTestCase]:
+    suite = unittest.TestLoader().loadTestsFromTestCase(test)
+    unittest.TextTestRunner(verbosity=2).run(suite)

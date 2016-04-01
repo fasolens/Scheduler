@@ -80,8 +80,8 @@ class SchedulerException(Exception):
 
 class Scheduler:
 
-    def __init__(self):
-        self.check_db()
+    def __init__(self, refresh=False):
+        self.check_db(refresh)
         if config.get('inventory', {}).get('sync', True):
             self.sync_inventory()
 
@@ -132,16 +132,16 @@ class Scheduler:
 
     connections = {}
 
-    def db(self):
+    def db(self, refresh=False):
         id = get_ident() or threading.current_thread().ident
-        if not self.connections.get(id):
+        if refresh or not self.connections.get(id):
             log.debug("Connection opened for thread id %s" % id)
             self.connections[id] = db.connect(config['database'])
             self.connections[id].row_factory = db.Row
         return self.connections[id]
 
-    def check_db(self):
-        c = self.db().cursor()
+    def check_db(self, refresh=False):
+        c = self.db(refresh).cursor()
         c.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = c.fetchall()
         # TODO: more sanity checks on boot
@@ -299,18 +299,18 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
 
         try:
             c.execute(
-                "INSERT INTO owners VALUES (NULL, ?, ?, ?)", (name, ssl, role))
+                "INSERT OR REPLACE INTO owners VALUES (NULL, ?, ?, ?)", (name, ssl, role))
             userid = c.lastrowid
             c.execute(
-                "INSERT INTO quota_owner_time VALUES (?, ?, ?, ?, ?)",
+                "INSERT OR REPLACE INTO quota_owner_time VALUES (?, ?, ?, ?, ?)",
                 (userid, POLICY_DEFAULT_QUOTA_TIME, POLICY_DEFAULT_QUOTA_TIME,
                  first_of_next_month, now))
             c.execute(
-                "INSERT INTO quota_owner_data VALUES (?, ?, ?, ?, ?)",
+                "INSERT OR REPLACE INTO quota_owner_data VALUES (?, ?, ?, ?, ?)",
                 (userid, POLICY_DEFAULT_QUOTA_DATA, POLICY_DEFAULT_QUOTA_DATA,
                  first_of_next_month, now))
             c.execute(
-                "INSERT INTO quota_owner_storage VALUES (?, ?, ?, ?, ?)",
+                "INSERT OR REPLACE INTO quota_owner_storage VALUES (?, ?, ?, ?, ?)",
                 (userid, POLICY_DEFAULT_QUOTA_STORAGE,
                  POLICY_DEFAULT_QUOTA_STORAGE, first_of_next_month, now))
             self.db().commit()
