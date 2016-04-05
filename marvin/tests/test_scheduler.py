@@ -134,6 +134,19 @@ class SchedulerTestCase(unittest.TestCase):
         r = self.sch.find_slot(1, duration=500, nodes=['500','600'])
         self.assertIsNone(r[0])
 
+    def test_13_quotas(self):
+        now = int(time.time())
+        self.sch.set_time_quota(1, 500)
+        self.sch.set_data_quota(1, 500)
+        self.sch.set_storage_quota(1, 500)
+        r = self.sch.allocate(1,'test', now + 500, 600, 1, 'test', '...', {})
+        self.assertEqual(r[2]['required'], 600)
+        r = self.sch.allocate(1,'test', now + 500, 500, 1, 'test', '...',
+                              {'traffic':200})
+        self.assertEqual(r[2]['required'], 600)
+        r = self.sch.allocate(1,'test', now + 500, 500, 1, 'test', '...',
+                              {'storage':600})
+        self.assertEqual(r[2]['required'], 600)
 
     def test_21_delete_experiment(self):
         r = self.sch.delete_experiment(3)

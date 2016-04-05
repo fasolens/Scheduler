@@ -106,18 +106,12 @@ These are defined as scheduling options, interpreted by the scheduling server:
     * recurrence    - (default 0) 'simple' for a basic recurrence model
     * period        - experiment will be repeated with this interval, in seconds
     * until         - UNIX timestamp, experiment will not be repeated after this date
-
-These are defined as deployment options, and passed as JSON blob to the deployment scripts on the node:
-
-  * options
     * restart     - (default 1) 0 if the experiment is not to be restarted if the node is rebooted
     * storage     - (default 1GB - container size?) storage quota for experiment results.
+    * traffic     - traffic quota, per interface, bidirectional
 
-TODO:
-
-  * operators - A list of operators and the associated traffic quotas
-    * traffic_in  - traffic quota, ingoing traffic on all interfaces
-    * traffic_out - traffic quota, outgoing traffic on all interfaces
+Options that are required to be known during deployment are passed to the node as 
+deployment parameters.
 
 The options parameter should be x-www-form-urlencoded, that is separated by ampersands
 and in the form key=value, or in the form of a JSON object.

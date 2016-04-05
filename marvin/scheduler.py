@@ -57,6 +57,7 @@ POLICY_DEFAULT_QUOTA_STORAGE = 50 * 1000000000  # 50 GB
 POLICY_DEFAULT_QUOTA_MODEM = 50 * 1000000000    # 50 GB
 
 POLICY_TASK_MAX_STORAGE = 500 * 1000000              # 500 MB per node
+POLICY_TASK_MAX_TRAFFIC = 500 * 1000000              # 500 MB per node TODO
 
 NODE_MISSING = 'missing'  # existed in the past, but no longer listed
 NODE_DISABLED = 'disabled'  # set to STORAGE or other in the inventory
@@ -252,6 +253,23 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
                          WHERE reset_date < ?""" % table,
                       (self.first_of_next_month(), now, now))
         self.db().commit()
+
+    def _set_quota(self, userid, value, table):
+        now = int(time.time())
+        c = self.db().cursor()
+        c.execute("UPDATE %s SET current = ? WHERE ownerid = ?" % table,
+                  (value, userid))
+        self.db().commit()
+        return c.rowcount
+
+    def set_data_quota(self, userid, value):
+        return self._set_quota(userid, value, 'quota_owner_data')
+
+    def set_storage_quota(self, userid, value):
+        return self._set_quota(userid, value, 'quota_owner_storage')
+
+    def set_time_quota(self, userid, value):
+        return self._set_quota(userid, value, 'quota_owner_time')
 
     def get_users(self, userid=None, ssl=None):
         self.check_quotas()
@@ -622,7 +640,9 @@ SELECT DISTINCT * FROM (
         for the extra options, see README.md
         options     -- shared=1 (default 0)
                     -- recurrence, period, until
-                    -- traffic_in, traffic_out, storage
+                    -- DEPRECATED: traffic_in, traffic_out
+                    -- storage
+                    -- traffic - bidi traffic per interface
                     -- nodes (list of node ids)
                     -- interfaces
                     -- restart
@@ -672,12 +692,14 @@ SELECT DISTINCT * FROM (
             preselection = opts.get("nodes").split(",")
 
         deployment_keys = [
-            'traffic_in',
-            'traffic_out',
+            'traffic',
+            #'traffic_in',
+            #'traffic_out',
             'storage',
             'interfaces',
             'restart']
         scheduling_keys = [
+            'traffic',
             'shared',
             'recurrence',
             'period',
@@ -689,14 +711,24 @@ SELECT DISTINCT * FROM (
                     for key in scheduling_keys if key in opts])
 
         req_storage = int(opts.get('storage', 0))
+        req_traffic = int(opts.get('traffic', 0))
+
         if req_storage > POLICY_TASK_MAX_STORAGE:
             return None, "Too much storage requested.", \
                    {'max_storage': POLICY_TASK_MAX_STORAGE,
                     'requested': req_storage}
+        if req_traffic > POLICY_TASK_MAX_TRAFFIC:
+            return None, "Requested data quota too high.", \
+                   {'max_data': POLICY_TASK_MAX_TRAFFIC,
+                    'requested': req_traffic}
         if u['quota_storage'] < (req_storage * nodecount):
             return None, "Insufficient storage quota.", \
                    {'quota_storage': u['quota_storage'],
                     'required': req_storage * nodecount}
+        if u['quota_data'] < (req_traffic * nodecount * 3):
+            return None, "Insufficient data quota.", \
+                   {'quota_data': u['quota_data'],
+                    'required': req_traffic * nodecount * 3}
 
         type_require, type_reject = self.parse_node_types(nodetypes)
         if type_require is None:
@@ -755,6 +787,10 @@ SELECT DISTINCT * FROM (
                 c.execute("UPDATE quota_owner_storage SET current = ? "
                           "WHERE ownerid = ?",
                           (u['quota_storage'] - (req_storage * nodecount),
+                           ownerid))
+                c.execute("UPDATE quota_owner_data SET current = ? "
+                          "WHERE ownerid = ?",
+                          (u['quota_data'] - (req_traffic * nodecount * 3),
                            ownerid))
             self.db().commit()
             return expid, "Created experiment %s on %s nodes " \
