@@ -4,12 +4,18 @@ set -e
 SCHEDID=$1
 CONTAINER=monroe-$SCHEDID
 
+if [ -f /outdir/$SCHEDID.conf ]; then
+  CONFIG=$(cat /outdir/$1.conf);
+  QUOTA_TRAFFIC=$(echo $CONFIG | jq .traffic);
+fi
+if [ -z "$QUOTA_TRAFFIC" ]; then
+  QUOTA_TRAFFIC=0;
+fi;
+
 ERROR_CONTAINER_DID_NOT_START=10
 
 # make sure network namespaces are set up
 mkdir -p /var/run/netns
-# make sure our cgroup is setup
-cgcreate -g net_cls:/monroe
 
 # Container boot counter and measurement UID
 
@@ -24,8 +30,10 @@ NODEID=$(</etc/nodeid)
 # NOTE: this assumes the container wrapper delays execution
 #       until the network interfaces are available
 
-docker run -d --cgroup-parent=monroe\
+docker run -d \
        --net=none \
+       --cap-add NET_ADMIN \
+       --cap-add NET_RAW \
        -v /outdir/$SCHEDID:/outdir \
        $CONTAINER \
        --guid ${SCHEDID}.${NODEID}.${COUNT}
@@ -52,32 +60,27 @@ if [ ! -z $PID ]; then
   # to execute any command within the monroe netns, use $MNS command
   MNS="ip netns exec monroe";
 
-  # set container net_cls.classid for accounting and quotas
-  # two different locations for docker 1.9.1 and docker 1.10+
-  echo '0x00100001' > /sys/fs/cgroup/net_cls,net_prio/monroe/${CID}/net_cls.classid ||
-  echo '0x00100001' > /sys/fs/cgroup/net_cls,net_prio/system.slice/monroe-${CID}.scope/net_cls.classid;
-
   ### TRAFFIC QUOTAS #########################################
-  # we currently use net_cls 10:1 for the active experiment
-  # we currently use net_cls 10:2 for passive experiments
 
-  # TODO: pass these quotas as parameter from the scheduler
-  TRAFFIC_IN=10000000;
-  TRAFFIC_OUT=10000000;
+  # TODO: check whether these are to be set in $MNS, or if they could be on host
+  $MNS iptables -N MONROE;
+  $MNS iptables -N MONROE_QUOTA_USB0;
+  $MNS iptables -N MONROE_QUOTA_USB1;
+  $MNS iptables -N MONROE_QUOTA_USB2;
 
-  # set outgoing quota rules
-  $MNS iptables -N MON_ACT_O;
-  $MNS iptables -A MON_ACT_O -m quota --quota $TRAFFIC_OUT -j ACCEPT;
-  $MNS iptables -A MON_ACT_O -j DROP;
-  $MNS iptables -A OUTPUT -m cgroup --cgroup 0x00100001 -j MON_ACT_O;
-  $MNS iptables -A OUTPUT -m cgroup --cgroup 0x00100002 -j DROP;
+  $MNS iptables -A MONROE_QUOTA_USB0 -m quota --quota $QUOTA_TRAFFIC -j ACCEPT;
+  $MNS iptables -A MONROE_QUOTA_USB0 -j DROP;
+  $MNS iptables -A MONROE_QUOTA_USB1 -m quota --quota $QUOTA_TRAFFIC -j ACCEPT;
+  $MNS iptables -A MONROE_QUOTA_USB1 -j DROP;
+  $MNS iptables -A MONROE_QUOTA_USB2 -m quota --quota $QUOTA_TRAFFIC -j ACCEPT;
+  $MNS iptables -A MONROE_QUOTA_USB2 -j DROP;
 
-  # set incoming quota rules
-  $MNS iptables -N MON_ACT_I;
-  $MNS iptables -A MON_ACT_I -m quota --quota $TRAFFIC_IN -j ACCEPT;
-  $MNS iptables -A MON_ACT_I -j DROP;
-  $MNS iptables -A INPUT -m cgroup --cgroup 0x00100001 -j MON_ACT_I;
-  $MNS iptables -A INPUT -m cgroup --cgroup 0x00100002 -j DROP;
+  $MNS iptables -A MONROE -i usb0 -j MONROE_QUOTA_USB0;
+  $MNS iptables -A MONROE -i usb1 -j MONROE_QUOTA_USB1;
+  $MNS iptables -A MONROE -i usb2 -j MONROE_QUOTA_USB2;
+
+  $MNS iptables -A OUTPUT -j MONROE;
+  $MNS iptables -A INPUT -j MONROE;
 
   ### NETWORK INTERFACES #####################################
 

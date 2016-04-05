@@ -640,7 +640,6 @@ SELECT DISTINCT * FROM (
         for the extra options, see README.md
         options     -- shared=1 (default 0)
                     -- recurrence, period, until
-                    -- DEPRECATED: traffic_in, traffic_out
                     -- storage
                     -- traffic - bidi traffic per interface
                     -- nodes (list of node ids)
@@ -693,8 +692,6 @@ SELECT DISTINCT * FROM (
 
         deployment_keys = [
             'traffic',
-            #'traffic_in',
-            #'traffic_out',
             'storage',
             'interfaces',
             'restart']
