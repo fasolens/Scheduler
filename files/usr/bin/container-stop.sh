@@ -47,4 +47,5 @@ umount /outdir/$SCHEDID            2>/dev/null  || echo 'Directory is no longer 
 rmdir  /outdir/$SCHEDID            2>/dev/null   
 rm     /outdir/${SCHEDID}.disk     2>/dev/null 
 rm     /outdir/${SCHEDID}.counter  2>/dev/null
+rm     /outdir/${SCHEDID}.conf     2>/dev/null
 
