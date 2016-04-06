@@ -131,7 +131,7 @@ class SchedulingClient:
 
         timestamp = sched['start']
         deploy_conf = dict(sched['deployment_options'])
-        deploy_conf.update('script', task['script'])
+        deploy_conf.update({'script': task['script']})
         deploy_opts = json.dumps(deploy_conf)
 
         if timestamp > now:
