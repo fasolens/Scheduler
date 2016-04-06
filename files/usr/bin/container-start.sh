@@ -6,7 +6,7 @@ CONTAINER=monroe-$SCHEDID
 
 if [ -f /outdir/$SCHEDID.conf ]; then
   CONFIG=$(cat /outdir/$1.conf);
-  QUOTA_TRAFFIC=$(echo $CONFIG | jq .traffic);
+  QUOTA_TRAFFIC=$(echo $CONFIG | jq -r .traffic);
 fi
 if [ -z "$QUOTA_TRAFFIC" ]; then
   QUOTA_TRAFFIC=0;

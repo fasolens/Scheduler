@@ -11,8 +11,8 @@ ERROR_INSUFFICIENT_DISK_SPACE=101
 
 if [ -f /outdir/$SCHEDID.conf ]; then
   CONFIG=$(cat /outdir/$1.conf);
-  QUOTA_DISK=$(echo $CONFIG | jq .storage);
-  CONTAINER_URL=$(echo $CONFIG | jq .script);
+  QUOTA_DISK=$(echo $CONFIG | jq -r .storage);
+  CONTAINER_URL=$(echo $CONFIG | jq -r .script);
 fi
 if [ -z "$QUOTA_DISK" ]; then
   QUOTA_DISK=500000; #KB!
