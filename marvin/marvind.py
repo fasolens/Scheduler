@@ -130,7 +130,9 @@ class SchedulingClient:
         stophook = self.stophook + " " + id
 
         timestamp = sched['start']
-        deploy_opts = json.dumps(sched['deployment_options'])
+        deploy_conf = dict(sched['deployment_options'])
+        deploy_conf.update('script', task['script'])
+        deploy_opts = json.dumps(deploy_conf)
 
         if timestamp > now:
             print [self.deployhook, id, task['script'], deploy_opts]
@@ -140,8 +142,7 @@ class SchedulingClient:
             fd.close()
             pro = Popen(
                 [self.deployhook,
-                 id,
-                 task['script']],
+                 id],
                 stdout=PIPE,
                 stdin=PIPE)
             output = pro.communicate()[0]
