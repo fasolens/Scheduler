@@ -7,6 +7,7 @@ CONTAINER=monroe-$SCHEDID
 if [ -f /outdir/$SCHEDID.conf ]; then
   CONFIG=$(cat /outdir/$1.conf);
   QUOTA_TRAFFIC=$(echo $CONFIG | jq -r .traffic);
+  QUOTA_DISK=$(echo $CONFIG | jq -r .storage);
 fi
 if [ -z "$QUOTA_TRAFFIC" ]; then
   QUOTA_TRAFFIC=0;
@@ -30,11 +31,15 @@ NODEID=$(</etc/nodeid)
 # NOTE: this assumes the container wrapper delays execution
 #       until the network interfaces are available
 
+if [ -d /outdir/$SCHEDID ]; then
+    MOUNT_DISK="-v /outdir/$SCHEDID:/outdir" 
+fi
+
 docker run -d \
        --net=none \
        --cap-add NET_ADMIN \
        --cap-add NET_RAW \
-       -v /outdir/$SCHEDID:/outdir \
+       $MOUNT_DISK \
        $CONTAINER \
        --guid ${SCHEDID}.${NODEID}.${COUNT}
 

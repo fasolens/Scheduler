@@ -2,6 +2,7 @@
 set -e
 
 SCHEDID=$1
+CONTAINER_URL=$2 # may be empty, just for convenience of starting manually.
 
 ERROR_CONTAINER_NOT_FOUND=100
 ERROR_INSUFFICIENT_DISK_SPACE=101
@@ -15,7 +16,7 @@ if [ -f /outdir/$SCHEDID.conf ]; then
   CONTAINER_URL=$(echo $CONFIG | jq -r .script);
 fi
 if [ -z "$QUOTA_DISK" ]; then
-  QUOTA_DISK=500000; #KB!
+  QUOTA_DISK=0; #KB!
 else 
   QUOTA_DISK=$(( $QUOTA_DISK / 1000 ))
 fi;
@@ -34,6 +35,9 @@ if [ -z "$EXISTED" ]; then
     docker rmi $CONTAINER_URL
 fi
 
+if [ $QUOTA_DISK -eq 0 ]; then
+    exit 0
+fi
 if [ ! -d /outdir/$SCHEDID ]; then 
     mkdir -p /outdir/$SCHEDID;
     dd if=/dev/zero of=/outdir/${SCHEDID}.disk bs=1000 count=$QUOTA_DISK;
