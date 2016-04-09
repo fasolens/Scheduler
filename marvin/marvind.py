@@ -137,7 +137,7 @@ class SchedulingClient:
         if timestamp > now:
             print [self.deployhook, id, task['script'], deploy_opts]
             # TODO: add to configuration
-            fd = open('/outdir/%s.conf' % id,'w')
+            fd = open("%s/%s.conf" % (self.confdir, id),'w')
             fd.write(deploy_opts)
             fd.close()
             pro = Popen(
@@ -296,7 +296,7 @@ class SchedulingClient:
                         "Fetching experiment %s did not return a task "
                         "definition, but %s" % (expid, task))
 
-        # FINALLY read and post task status from /outdir/*.status 
+        # FINALLY read and post task status from *.status 
         try:
             statfiles = glob(self.statdir + "/*.status")
             for f in statfiles:
@@ -316,6 +316,7 @@ class SchedulingClient:
         self.stophook = config['hooks']['stop']
         self.deployhook = config['hooks']['deploy']
         self.statdir = config['status_directory']
+        self.confdir = config['config_directory']
 
         result = requests.get(
             config['rest-server'] + "/backend/auth",

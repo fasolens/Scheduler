@@ -5,6 +5,8 @@ SCHEDID=$1
 STATUS=$2
 CONTAINER=monroe-$SCHEDID
 
+BASEDIR=/experiments/user
+
 CID=$( docker ps | grep $CONTAINER | awk '{print $1}' )
 if [ -z "$CID" ]; then
   echo "Container is no longer running.";
@@ -24,9 +26,9 @@ else
 fi
 
 if [ -z "$STATUS" ]; then
-  echo 'finished' > /outdir/$SCHEDID.status;
+  echo 'finished' > $BASEDIR/$SCHEDID.status;
 else 
-  echo $STATUS > /outdir/$SCHEDID.status;
+  echo $STATUS > $BASEDIR/$SCHEDID.status;
 fi
 
 REF=$( docker images | grep $CONTAINER | awk '{print $3}' )
@@ -43,9 +45,9 @@ docker rmi $(docker images -a|grep '^<none>'|awk "{print \$3}") 2>/dev/null
 
 # TODO sync outdir
 
-umount /outdir/$SCHEDID            2>/dev/null  || echo 'Directory is no longer mounted.'
-rmdir  /outdir/$SCHEDID            2>/dev/null   
-rm     /outdir/${SCHEDID}.disk     2>/dev/null 
-rm     /outdir/${SCHEDID}.counter  2>/dev/null
-rm     /outdir/${SCHEDID}.conf     2>/dev/null
+umount $BASEDIR/$SCHEDID            2>/dev/null  || echo 'Directory is no longer mounted.'
+rmdir  $BASEDIR/$SCHEDID            2>/dev/null   
+rm     $BASEDIR/${SCHEDID}.disk     2>/dev/null 
+rm     $BASEDIR/${SCHEDID}.counter  2>/dev/null
+rm     $BASEDIR/${SCHEDID}.conf     2>/dev/null
 

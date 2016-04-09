@@ -4,8 +4,10 @@ set -e
 SCHEDID=$1
 CONTAINER=monroe-$SCHEDID
 
-if [ -f /outdir/$SCHEDID.conf ]; then
-  CONFIG=$(cat /outdir/$1.conf);
+BASEDIR=/experiments/user
+
+if [ -f $BASEDIR/$SCHEDID.conf ]; then
+  CONFIG=$(cat $BASEDIR/$1.conf);
   QUOTA_TRAFFIC=$(echo $CONFIG | jq -r .traffic);
   QUOTA_DISK=$(echo $CONFIG | jq -r .storage);
 fi
@@ -20,9 +22,9 @@ mkdir -p /var/run/netns
 
 # Container boot counter and measurement UID
 
-COUNT=$(cat /outdir/${SCHEDID}.counter 2>/dev/null || echo 0)
+COUNT=$(cat $BASEDIR/${SCHEDID}.counter 2>/dev/null || echo 0)
 COUNT=$(($COUNT + 1))
-echo $COUNT > /outdir/${SCHEDID}.counter
+echo $COUNT > $BASEDIR/${SCHEDID}.counter
 
 NODEID=$(</etc/nodeid)
 
@@ -31,8 +33,8 @@ NODEID=$(</etc/nodeid)
 # NOTE: this assumes the container wrapper delays execution
 #       until the network interfaces are available
 
-if [ -d /outdir/$SCHEDID ]; then
-    MOUNT_DISK="-v /outdir/$SCHEDID:/outdir" 
+if [ -d $BASEDIR/$SCHEDID ]; then
+    MOUNT_DISK="-v $BASEDIR/$SCHEDID:$BASEDIR" 
 fi
 
 docker run -d \
@@ -47,7 +49,7 @@ docker run -d \
 CID=$(docker ps --no-trunc | grep $CONTAINER | awk '{print $1}' | head -n 1)
 
 if [ -z "$CID" ]; then
-    echo 'failed' > /outdir/$SCHEDID.status
+    echo 'failed' > $BASEDIR/$SCHEDID.status
     exit $ERROR_CONTAINER_DID_NOT_START;
 fi
 
@@ -104,9 +106,9 @@ if [ ! -z $PID ]; then
    $MNS multi_client -d;
 
 else
-  echo 'failed' > /outdir/$SCHEDID.status
+  echo 'failed' > $BASEDIR/$SCHEDID.status
   exit $ERROR_CONTAINER_DID_NOT_START;
 fi
  
-echo 'started' > /outdir/$SCHEDID.status
+echo 'started' > $BASEDIR/$SCHEDID.status
 # TODO log status to sysevent and return a success value to the scheduler

@@ -4,14 +4,16 @@ set -e
 SCHEDID=$1
 CONTAINER_URL=$2 # may be empty, just for convenience of starting manually.
 
+BASEDIR=/experiments/user
+
 ERROR_CONTAINER_NOT_FOUND=100
 ERROR_INSUFFICIENT_DISK_SPACE=101
 
 # TODO: Check if we have sufficient resources to deploy this container.
 # If not, return an error code to delay deployment.
 
-if [ -f /outdir/$SCHEDID.conf ]; then
-  CONFIG=$(cat /outdir/$1.conf);
+if [ -f $BASEDIR/$SCHEDID.conf ]; then
+  CONFIG=$(cat $BASEDIR/$1.conf);
   QUOTA_DISK=$(echo $CONFIG | jq -r .storage);
   CONTAINER_URL=$(echo $CONFIG | jq -r .script);
 fi
@@ -38,9 +40,11 @@ fi
 if [ $QUOTA_DISK -eq 0 ]; then
     exit 0
 fi
-if [ ! -d /outdir/$SCHEDID ]; then 
-    mkdir -p /outdir/$SCHEDID;
-    dd if=/dev/zero of=/outdir/${SCHEDID}.disk bs=1000 count=$QUOTA_DISK;
-    mkfs /outdir/${SCHEDID}.disk;
-    mount -o loop /outdir/${SCHEDID}.disk /outdir/${SCHEDID};
+if [ ! -d $BASEDIR/$SCHEDID ]; then 
+    mkdir -p $BASEDIR/$SCHEDID;
+    dd if=/dev/zero of=$BASEDIR/${SCHEDID}.disk bs=1000 count=$QUOTA_DISK;
+    mkfs $BASEDIR/${SCHEDID}.disk;
+fi
+if [ ! mountpoint -q $BASEDIR/$SCHEDID ]; then
+    mount -o loop $BASEDIR/${SCHEDID}.disk $BASEDIR/${SCHEDID};
 fi
