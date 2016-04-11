@@ -37,7 +37,7 @@ if [ -d $BASEDIR/$SCHEDID ]; then
     MOUNT_DISK="-v $BASEDIR/$SCHEDID:$BASEDIR" 
 fi
 
-docker run --rm -d \
+docker run -d \
        --net=none \
        --cap-add NET_ADMIN \
        --cap-add NET_RAW \
