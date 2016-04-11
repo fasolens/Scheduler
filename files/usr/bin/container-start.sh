@@ -28,8 +28,8 @@ echo $COUNT > $BASEDIR/${SCHEDID}.counter
 
 NODEID=$(</etc/nodeid)
 
-### START THE CONTAINER ####################################
-# TODO: parameters to be passed, e.g. nodeid
+### START THE CONTAINER ###############################################
+# NOTE: this assumes docker is running with the --iptables=false option
 # NOTE: this assumes the container wrapper delays execution
 #       until the network interfaces are available
 
@@ -38,7 +38,7 @@ if [ -d $BASEDIR/$SCHEDID ]; then
 fi
 
 docker run -d \
-       --net=none \
+       --net=bridge \
        --cap-add NET_ADMIN \
        --cap-add NET_RAW \
        $MOUNT_DISK \
@@ -68,6 +68,11 @@ if [ ! -z $PID ]; then
   MNS="ip netns exec monroe";
 
   ### TRAFFIC QUOTAS #########################################
+
+  # rename the standard eth0 interface to 'metadata'
+  IP=$($MNS ip route | tail -n 1 | awk '{print $NF}')
+  $MNS ifconfig eth0 down;
+  $MNS ip link set eth0 name metadata;
 
   # TODO: check whether these are to be set in $MNS, or if they could be on host
   $MNS iptables -N MONROE;
@@ -104,6 +109,8 @@ if [ ! -z $PID ]; then
       $MNS ifconfig $IF up;
    done
    $MNS multi_client -d;
+
+   $MNS ifconfig metadata $IP up;  
 
 else
   echo 'failed' > $BASEDIR/$SCHEDID.status
