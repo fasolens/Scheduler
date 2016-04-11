@@ -146,7 +146,7 @@ class Scheduler:
         c.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = c.fetchall()
         # TODO: more sanity checks on boot
-        if not set(["nodes", "node_type", "owners",
+        if not set(["nodes", "node_type", "node_interface", "owners",
                     "experiments", "schedule",
                     "quota_owner_time", "quota_owner_data",
                     "quota_owner_storage", "quota_node_operator_data",
@@ -158,6 +158,10 @@ CREATE TABLE IF NOT EXISTS nodes (id INTEGER PRIMARY KEY ASC,
 CREATE TABLE IF NOT EXISTS node_type (nodeid INTEGER NOT NULL,
     type TEXT NOT NULL, FOREIGN KEY (nodeid) REFERENCES nodes(id),
     PRIMARY KEY (nodeid, type));
+CREATE TABLE IF NOT EXISTS node_interface (nodeid, INTEGER NOT NULL,
+    mccmnc INTEGER NOT NULL, operator TEXT, quota_value INTEGER NOT NULL,
+    quota_reset INTEGER, quota_type INTEGER NOT NULL,
+    quota_reset_date INTEGER);
 CREATE TABLE IF NOT EXISTS owners (id INTEGER PRIMARY KEY ASC,
     name TEXT UNIQUE NOT NULL, ssl_id TEXT UNIQUE NOT NULL,
     role TEXT NOT NULL);
@@ -493,6 +497,7 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
             start and stop from the set of nodes matching type_accept and
             not type_reject
         """
+        # TODO: take node_interface quota into account
 
         c = self.db().cursor()
 
@@ -707,8 +712,8 @@ SELECT DISTINCT * FROM (
         opts = dict([(key, opts.get(key, None))
                     for key in scheduling_keys if key in opts])
 
-        req_storage = int(opts.get('storage', 0))
-        req_traffic = int(opts.get('traffic', 0))
+        req_storage    = int(opts.get('storage', 0))
+        req_traffic    = int(opts.get('traffic', 0))
 
         if req_storage > POLICY_TASK_MAX_STORAGE:
             return None, "Too much storage requested.", \
@@ -778,6 +783,10 @@ SELECT DISTINCT * FROM (
                               (node['id'], expid, i[0], i[1], 'defined',
                                shared, json.dumps(deployment_opts)))
 
+                c.execute("UPDATE node_interface SET "
+                          "quota_value = quota_value - ? "
+                          "WHERE nodeid = ?",
+                          (req_traffic, node['id']))
                 c.execute("UPDATE quota_owner_time SET current = ? "
                           "WHERE ownerid = ?",
                           (u['quota_time'] - (duration * nodecount), ownerid))
@@ -799,6 +808,7 @@ SELECT DISTINCT * FROM (
                           }
         except db.Error as er:
             # NOTE: automatic rollback is triggered in case of an exception
+            print er.message
             log.error(er.message)
             return None, "Task creation failed.", {'error': er.message}
 
