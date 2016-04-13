@@ -36,11 +36,9 @@ else:
     nope, cfile = sys.argv
 
 config = configuration.select('marvind', cfile)
-# logging.basicConfig(filename=config['log']['file'],
-# level=config['log']['level'])
-logging.basicConfig(level=config['log']['level'])
+logging.basicConfig(filename=config['log']['file'],
+                    level=config['log']['level'])
 log = logging.getLogger('marvind')
-
 
 AT_TIME_FORMAT = "%H:%M %Y-%m-%d"
 
