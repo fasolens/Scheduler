@@ -87,7 +87,7 @@ class Scheduler:
             self.sync_inventory()
 
     def sync_inventory(self):
-        nodes = inventory_api("nodes/status")
+        nodes = inventory_api("monroe/nodes/status")
         if not nodes:
             log.error("No nodes returned from inventory.")
             sys.exit(1)
@@ -103,32 +103,31 @@ class Scheduler:
                 else NODE_DISABLED
             c.execute(
                 "UPDATE nodes SET hostname = ?, status = ? WHERE id = ?",
-                (node.get("Hostname", node.get("HostName")),
+                (node.get("Hostname"),
                  status,
                  node["NodeId"]))
             c.execute(
                 "INSERT OR IGNORE INTO nodes VALUES (?, ?, ?, ?)",
                 (node["NodeId"],
-                 node.get("Hostname", node.get("HostName")),
+                 node.get("Hostname"),
                     status,
                     0))
             types = []
-            country = node.get('Country')
-            if country is not None:
-                types.append('country:'+country.lower())
-            model = node.get('Model')
-            if model is not None:
-                types.append('model:'+model.lower())
-            status = node.get('Status')
-            if status is not None:
-                types.append(status.lower())
+
+            for key, tag in [('Country', 'country'),
+                        ('Model', 'model'),
+                        ('ProjectName', 'project'),
+                        ('Status','status')]:
+                value = node.get(key)
+                if value is not None:
+                    types.append((tag, value.lower()))
 
             c.execute("DELETE FROM node_type WHERE nodeid = ?",
                       (node["NodeId"],))
-            for type_ in types:
+            for tag, type_ in types:
                 c.execute(
-                    "INSERT OR IGNORE INTO node_type VALUES (?, ?)",
-                    (node["NodeId"], type_))
+                    "INSERT OR IGNORE INTO node_type VALUES (?, ?, ?)",
+                    (node["NodeId"], tag, type_))
         self.db().commit()
 
     connections = {}
@@ -156,8 +155,9 @@ class Scheduler:
 CREATE TABLE IF NOT EXISTS nodes (id INTEGER PRIMARY KEY ASC,
     hostname TEXT NOT NULL, status TEXT, heartbeat INTEGER);
 CREATE TABLE IF NOT EXISTS node_type (nodeid INTEGER NOT NULL,
-    type TEXT NOT NULL, FOREIGN KEY (nodeid) REFERENCES nodes(id),
-    PRIMARY KEY (nodeid, type));
+    tag TEXT NOT NULL, type TEXT NOT NULL,
+    FOREIGN KEY (nodeid) REFERENCES nodes(id),
+    PRIMARY KEY (nodeid, tag));
 CREATE TABLE IF NOT EXISTS node_interface (nodeid, INTEGER NOT NULL,
     mccmnc INTEGER NOT NULL, operator TEXT, quota_value INTEGER NOT NULL,
     quota_reset INTEGER, quota_type INTEGER NOT NULL,
@@ -211,9 +211,11 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         if nodeid is not None:
             c.execute("SELECT * FROM nodes WHERE id = ?", (nodeid,))
         elif nodetype is not None:
+            tag, type_ = nodetype.split(":")
             c.execute("SELECT * FROM nodes WHERE EXISTS "
-                      "(SELECT nodeid FROM node_type WHERE type = ?)",
-                      (nodetype,))
+                      "(SELECT nodeid FROM node_type "
+                      " WHERE tag = ? AND type = ?)",
+                      (tag, type_))
         else:
             c.execute("SELECT * FROM nodes")
         noderows = c.fetchall()
@@ -221,10 +223,11 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         if nodes:
             for node in nodes:
                 c.execute(
-                    "SELECT type FROM node_type WHERE nodeid = ?",
+                    "SELECT tag, type FROM node_type WHERE nodeid = ?",
                     (node['id'],))
                 typerows = c.fetchall()
-                node['type'] = [row['type'] for row in typerows]
+                node['type'] = dict([(row['tag'], row['type'])
+                                     for row in typerows])
         return nodes
 
     def set_node_types(self, nodeid, nodetypes):
@@ -233,10 +236,10 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         try:
             c.execute("DELETE FROM node_type WHERE nodeid = ?", (nodeid,))
             for type_ in types:
+                tag, ty = type_.strip().split(":")
                 c.execute(
-                    "INSERT INTO node_type VALUES (?, ?)",
-                    (nodeid,
-                     type_.strip()))
+                    "INSERT INTO node_type VALUES (?, ?, ?)",
+                    (nodeid, tag, ty))
             self.db().commit()
             if c.rowcount == 1:
                 return True
@@ -507,14 +510,14 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
 
         query = "\nSELECT DISTINCT id FROM nodes WHERE status = ? \n"
         query += preselection
+        type_require = [x[0].split(":") for x in type_require]
+        type_reject = [x[0].split(":") for x in type_reject]
         for type_and in type_require:
-            or_clause = "(" + ", ".join(["?"]*len(type_and)) + ")"
             query += "  AND id IN (SELECT nodeid FROM node_type " \
-                     "WHERE type IN "+or_clause+") \n"
+                     "  WHERE tag = ? AND type = ?)"
         for type_and in type_reject:
-            or_clause = "(" + ", ".join(["?"]*len(type_and)) + ")"
-            query += "  AND id NOT IN (SELECT nodeid FROM node_type "\
-                     "WHERE type IN "+or_clause+") \n"
+            query += "  AND id NOT IN (SELECT nodeid FROM node_type " \
+                     "  WHERE tag = ? AND type = ?)"
         query += """
 AND id NOT IN (
     SELECT DISTINCT nodeid FROM schedule s
@@ -567,27 +570,33 @@ AND id NOT IN (
         where = "WHERE 1==1"
         if selection is not None:
             where += " AND nodeid IN ('" + "', '".join(nodes) + "') \n"
+        type_require_ = [x[0].split(":") for x in type_require]
+        type_reject_ = [x[0].split(":") for x in type_reject]
         for type_and in type_require:
-            or_clause = "(" + ", ".join(["?"]*len(type_and)) + ")"
-            where += "  AND nodeid IN (SELECT nodeid FROM node_type " \
-                     "WHERE type IN "+or_clause+") \n"
+            where += "  AND id IN (SELECT nodeid FROM node_type " \
+                     "  WHERE tag = ? AND type = ?)"
         for type_and in type_reject:
-            or_clause = "(" + ", ".join(["?"]*len(type_and)) + ")"
-            where += "  AND nodeid NOT IN (SELECT nodeid FROM node_type "\
-                     "WHERE type IN "+or_clause+") \n"
-
+            where += "  AND id NOT IN (SELECT nodeid FROM node_type " \
+                     "  WHERE tag = ? AND type = ?)"
         query = """
 SELECT DISTINCT * FROM (
     SELECT start - ? AS t FROM schedule %s UNION
     SELECT stop + ?  AS t FROM schedule %s
 ) WHERE t >= ? AND t < ? ORDER BY t ASC;
                 """ % (where, where)
+
+        print query
+        print type_require_
+        print type_reject_
+        print start
+        print stop
+
         c.execute(query, [POLICY_TASK_PADDING + 1] +
-                         list(chain.from_iterable(type_require)) +
-                         list(chain.from_iterable(type_reject)) +
+                         list(chain.from_iterable(type_require_)) +
+                         list(chain.from_iterable(type_reject_)) +
                          [POLICY_TASK_PADDING + 1] +
-                         list(chain.from_iterable(type_require)) +
-                         list(chain.from_iterable(type_reject)) +
+                         list(chain.from_iterable(type_require_)) +
+                         list(chain.from_iterable(type_reject_)) +
                          [start, stop])
         segments = [start] + [x[0] for x in c.fetchall()] + [stop]
         segments.sort()

@@ -25,7 +25,7 @@ config = configuration.select('marvinctld', cfile)
 
 # logging.basicConfig(level=config['log']['level'])
 logging.basicConfig(
-    filename=config['log']['file'],
+#    filename=config['log']['file'],
     level=config['log']['level'])
 log = logging.getLogger('marvinctld')
 

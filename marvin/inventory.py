@@ -26,9 +26,9 @@ def inventory_api(route, data=None):
         ).hexdigest()
     headers = {
         "Content-Type": "application/json",
-        "API_ID": config['inventory']['id'],
-        "API_TIME": now,
-        "API_HASH": hachee,
+        "Client-Id": config['inventory']['id'],
+        "Message-Timestamp": now,
+        "Message-Hash": hachee,
     }
     log.debug("API request %s with params %s" % (route, json.dumps(headers)))
     log.debug("Hashed message: %s" % message)
