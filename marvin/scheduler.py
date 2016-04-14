@@ -585,12 +585,6 @@ SELECT DISTINCT * FROM (
 ) WHERE t >= ? AND t < ? ORDER BY t ASC;
                 """ % (where, where)
 
-        print query
-        print type_require_
-        print type_reject_
-        print start
-        print stop
-
         c.execute(query, [POLICY_TASK_PADDING + 1] +
                          list(chain.from_iterable(type_require_)) +
                          list(chain.from_iterable(type_reject_)) +

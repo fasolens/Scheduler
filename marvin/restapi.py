@@ -64,7 +64,7 @@ class Resource:
         role = rest_api.get_role(web.ctx)
         if role is None:
             web.ctx.status = '401 Unauthorized'
-            return error("Please present a valid SSL client certificate"
+            return error("Please present a valid SSL client certificate "
                          "to access this information")
 
         data = None
