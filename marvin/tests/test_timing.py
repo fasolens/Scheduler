@@ -39,7 +39,7 @@ class TimingTestCase(unittest.TestCase):
                     c.execute("INSERT OR IGNORE INTO nodes VALUES (?, ?, ?, ?)",
                               (nodeid, 'test %i' % nodeid, 'active', 0))
                     self.sch.db().commit()
-                    self.sch.set_node_types(nodeid, 'test')
+                    self.sch.set_node_types(nodeid, 'status:test')
                 print "done."
 
     def test_01_lots_of_recurring(self):
@@ -51,13 +51,13 @@ class TimingTestCase(unittest.TestCase):
         for nodeid in xrange(1,25):
             before = time.time()
             r = self.sch.allocate(userid, 'test', now + 500, 60, 1,
-                                  'test', '...',
+                                  'status:test', '...',
                                   {'recurrence': 'simple',
                                    'period': 3600,
                                    'until': until})
             self.assertEqual(r[2]['nodecount'], 1)
             self.assertEqual(r[2]['intervals'], 744)
-            r = self.sch.allocate(userid, 'test', now + 750, 60, 1, 'test', '...',
+            r = self.sch.allocate(userid, 'test', now + 750, 60, 1, 'status:test', '...',
                                   {'recurrence': 'simple',
                                    'period': 3600,
                                    'until': until})
@@ -72,10 +72,10 @@ class TimingTestCase(unittest.TestCase):
         before = time.time()
         r = self.sch.find_slot(1)
         self.assertEqual(r[0][0]['nodecount'], 1)
-        r = self.sch.find_slot(1, nodetypes='fail')
+        r = self.sch.find_slot(1, nodetypes='status:fail')
         self.assertIsNone(r[0])
         r = self.sch.find_slot(1, duration=500, nodes=['1'],
-                               nodetypes='test,-foo')
+                               nodetypes='status:test,-status:foo')
         self.assertIsNotNone(r[0])
         self.assertEqual(r[0][0]['nodecount'], 1)
         r = self.sch.find_slot(1, duration=500, nodes=['500', '600'])

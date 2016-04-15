@@ -129,7 +129,7 @@ class SchedulerTestCase(unittest.TestCase):
         r = self.sch.find_slot(1, nodetypes='status:fail')
         self.assertIsNone(r[0])
         r = self.sch.find_slot(1, duration=500, nodes=['1'],
-                               nodetypes='status:test,-status:foo')
+                               nodetypes='status:test')
         self.assertIsNotNone(r[0])
         self.assertEqual(r[0][0]['nodecount'], 1)
         r = self.sch.find_slot(1, duration=500, nodes=['500','600'])

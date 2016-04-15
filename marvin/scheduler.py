@@ -572,11 +572,12 @@ AND id NOT IN (
             where += " AND nodeid IN ('" + "', '".join(nodes) + "') \n"
         type_require_ = [x[0].split(":") for x in type_require]
         type_reject_ = [x[0].split(":") for x in type_reject]
+
         for type_and in type_require:
-            where += "  AND id IN (SELECT nodeid FROM node_type " \
+            where += "  AND nodeid IN (SELECT nodeid FROM node_type " \
                      "  WHERE tag = ? AND type = ?)"
         for type_and in type_reject:
-            where += "  AND id NOT IN (SELECT nodeid FROM node_type " \
+            where += "  AND nodeid NOT IN (SELECT nodeid FROM node_type " \
                      "  WHERE tag = ? AND type = ?)"
         query = """
 SELECT DISTINCT * FROM (
