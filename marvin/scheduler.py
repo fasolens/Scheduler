@@ -87,7 +87,7 @@ class Scheduler:
             self.sync_inventory()
 
     def sync_inventory(self):
-        nodes = inventory_api("nodes/devices")
+        nodes = inventory_api("nodes/status")
         if not nodes:
             log.error("No nodes returned from inventory.")
             sys.exit(1)
