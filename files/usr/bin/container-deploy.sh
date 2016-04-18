@@ -43,8 +43,8 @@ fi
 if [ ! -d $BASEDIR/$SCHEDID ]; then 
     mkdir -p $BASEDIR/$SCHEDID;
     dd if=/dev/zero of=$BASEDIR/${SCHEDID}.disk bs=1000 count=$QUOTA_DISK;
-    mkfs $BASEDIR/${SCHEDID}.disk;
+    mkfs.ext4 $BASEDIR/${SCHEDID}.disk -F -L $SCHEDID;
 fi
-if [ ! mountpoint -q $BASEDIR/$SCHEDID ]; then
-    mount -o loop $BASEDIR/${SCHEDID}.disk $BASEDIR/${SCHEDID};
-fi
+mountpoint -q $BASEDIR/$SCHEDID || {
+    mount -t ext4 -o loop,data=journal,nodelalloc,barrier=1 $BASEDIR/${SCHEDID}.disk $BASEDIR/${SCHEDID};
+}
