@@ -254,7 +254,7 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
                 typerows = c.fetchall()
                 node['type'] = dict([(row['tag'], row['type'])
                                      for row in typerows])
-                c.execute("SELECT * FROM node_interfaces WHERE nodeit = ?",
+                c.execute("SELECT * FROM node_interfaces WHERE nodeid = ?",
                     (node.get('id'),))
                 interfaces = c.fetchall()
                 node['interfaces'] = [dict(x) for x in interfaces] or []
