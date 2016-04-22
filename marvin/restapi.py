@@ -181,7 +181,7 @@ class Schedule:
             return error("Scheduling id missing.")
         schedid = schedid[1:]
         tasks = rest_api.scheduler.get_schedule(schedid=schedid, past=True)
-        if len(tasks)==0:
+        if len(tasks) == 0:
             web.ctx.status = '404 Not Found'
             return error("Could not find schedule entry with this id.")
         nodeid = tasks[0]['nodeid']
@@ -236,8 +236,8 @@ class Experiment:
         required = ['name', 'nodecount', 'nodetypes', 'script']
         optional = ['options', 'start', 'stop', 'duration']
         if set(required).issubset(set(params.keys())):
-            start    = params.get('start',0)
-            stop     = params.get('stop',0)
+            start = params.get('start', 0)
+            stop = params.get('stop', 0)
             duration = params.get('duration', stop-start)
 
             alloc, errmsg, extra = rest_api.scheduler.allocate(
@@ -259,7 +259,7 @@ class Experiment:
                          % (str(required), str(optional), str(params.keys())))
 
     def DELETE(self, expid):
-        role = rest_api.get_role(web.ctx)
+        uid, role, name = rest_api.get_user(web.ctx)
         if role not in [scheduler.ROLE_USER, scheduler.ROLE_ADMIN]:
             web.ctx.status = '401 Unauthorized'
             return error("You'd have to be a user or admin to do that")
@@ -267,6 +267,10 @@ class Experiment:
         if expid in ["", "/"]:
             web.ctx.status = '400 Bad Request'
             return error("Taskid missing.")
+        experiments = rest_api.scheduler.get_experiments(expid=expid)
+        if experiments[0]['ownerid'] != uid and role != scheduler.ROLE_USER:
+            web.ctx.status = '401 Unauthorized'
+            return error("Only admins and user %i can do this" % uid)
         else:
             result, message, extra = \
                 rest_api.scheduler.delete_experiment(expid[1:])
