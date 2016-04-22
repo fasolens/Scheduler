@@ -74,6 +74,11 @@ NODE_TYPE_STATIC = 'static'
 NODE_TYPE_MOBILE = 'mobile'
 NODE_TYPE_TESTING = 'testing'
 
+DEVICE_HISTORIC = 'historic'
+DEVICE_CURRENT = 'current'
+
+QUOTA_MONTHLY = 0
+
 
 class SchedulerException(Exception):
     pass
@@ -115,9 +120,9 @@ class Scheduler:
             types = []
 
             for key, tag in [('Country', 'country'),
-                        ('Model', 'model'),
-                        ('ProjectName', 'project'),
-                        ('Status','status')]:
+                             ('Model', 'model'),
+                             ('ProjectName', 'project'),
+                             ('Status', 'status')]:
                 value = node.get(key)
                 if value is not None:
                     types.append((tag, value.lower()))
@@ -129,6 +134,26 @@ class Scheduler:
                     "INSERT OR IGNORE INTO node_type VALUES (?, ?, ?)",
                     (node["NodeId"], tag, type_))
         self.db().commit()
+
+        devices = inventory_api("nodes/devices")
+        if not devices:
+            log.error("No devices returned from inventory.")
+            sys.exit(1)
+
+        c.execute("UPDATE node_interface SET status = ?", (DEVICE_HISTORIC,))
+        for device in devices:
+            if not device.get('Iccid'):
+                continue
+            if not device.get('MccMnc'):
+                continue
+            c.execute("UPDATE node_interface SET status = ? "
+                      "WHERE deviceid = ?",
+                      (DEVICE_CURRENT, node.get('DeviceId'),))
+            c.execute("INSERT OR IGNORE INTO node_interface "
+                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                      (device.get('NodeId'), device.get('DeviceId'),
+                       device.get('MccMnc'), device.get('Operator'),
+                       0, 0, QUOTA_MONTHLY, 0, DEVICE_CURRENT))
 
     connections = {}
 
@@ -158,10 +183,11 @@ CREATE TABLE IF NOT EXISTS node_type (nodeid INTEGER NOT NULL,
     tag TEXT NOT NULL, type TEXT NOT NULL,
     FOREIGN KEY (nodeid) REFERENCES nodes(id),
     PRIMARY KEY (nodeid, tag));
-CREATE TABLE IF NOT EXISTS node_interface (nodeid, INTEGER NOT NULL,
-    mccmnc INTEGER NOT NULL, operator TEXT, quota_value INTEGER NOT NULL,
+CREATE TABLE IF NOT EXISTS node_interface (nodeid INTEGER NOT NULL,
+    deviceid INTEGER NOT NULL, mccmnc INTEGER NOT NULL,
+    operator TEXT NOT NULL, quota_value INTEGER NOT NULL,
     quota_reset INTEGER, quota_type INTEGER NOT NULL,
-    quota_reset_date INTEGER);
+    quota_reset_date INTEGER, status TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS owners (id INTEGER PRIMARY KEY ASC,
     name TEXT UNIQUE NOT NULL, ssl_id TEXT UNIQUE NOT NULL,
     role TEXT NOT NULL);
@@ -262,7 +288,6 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         self.db().commit()
 
     def _set_quota(self, userid, value, table):
-        now = int(time.time())
         c = self.db().cursor()
         c.execute("UPDATE %s SET current = ? WHERE ownerid = ?" % table,
                   (value, userid))
@@ -324,18 +349,22 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
 
         try:
             c.execute(
-                "INSERT OR REPLACE INTO owners VALUES (NULL, ?, ?, ?)", (name, ssl, role))
+                "INSERT OR REPLACE INTO owners VALUES (NULL, ?, ?, ?)",
+                (name, ssl, role))
             userid = c.lastrowid
             c.execute(
-                "INSERT OR REPLACE INTO quota_owner_time VALUES (?, ?, ?, ?, ?)",
+                "INSERT OR REPLACE INTO quota_owner_time "
+                "VALUES (?, ?, ?, ?, ?)",
                 (userid, POLICY_DEFAULT_QUOTA_TIME, POLICY_DEFAULT_QUOTA_TIME,
                  first_of_next_month, now))
             c.execute(
-                "INSERT OR REPLACE INTO quota_owner_data VALUES (?, ?, ?, ?, ?)",
+                "INSERT OR REPLACE INTO quota_owner_data "
+                "VALUES (?, ?, ?, ?, ?)",
                 (userid, POLICY_DEFAULT_QUOTA_DATA, POLICY_DEFAULT_QUOTA_DATA,
                  first_of_next_month, now))
             c.execute(
-                "INSERT OR REPLACE INTO quota_owner_storage VALUES (?, ?, ?, ?, ?)",
+                "INSERT OR REPLACE INTO quota_owner_storage "
+                "VALUES (?, ?, ?, ?, ?)",
                 (userid, POLICY_DEFAULT_QUOTA_STORAGE,
                  POLICY_DEFAULT_QUOTA_STORAGE, first_of_next_month, now))
             self.db().commit()
@@ -587,12 +616,12 @@ SELECT DISTINCT * FROM (
                 """ % (where, where)
 
         c.execute(query, [POLICY_TASK_PADDING + 1] +
-                         list(chain.from_iterable(type_require_)) +
-                         list(chain.from_iterable(type_reject_)) +
-                         [POLICY_TASK_PADDING + 1] +
-                         list(chain.from_iterable(type_require_)) +
-                         list(chain.from_iterable(type_reject_)) +
-                         [start, stop])
+                  list(chain.from_iterable(type_require_)) +
+                  list(chain.from_iterable(type_reject_)) +
+                  [POLICY_TASK_PADDING + 1] +
+                  list(chain.from_iterable(type_require_)) +
+                  list(chain.from_iterable(type_reject_)) +
+                  [start, stop])
         segments = [start] + [x[0] for x in c.fetchall()] + [stop]
         segments.sort()
 
@@ -716,8 +745,8 @@ SELECT DISTINCT * FROM (
         opts = dict([(key, opts.get(key, None))
                     for key in scheduling_keys if key in opts])
 
-        req_storage    = int(opts.get('storage', 0))
-        req_traffic    = int(opts.get('traffic', 0))
+        req_storage = int(opts.get('storage', 0))
+        req_traffic = int(opts.get('traffic', 0))
 
         if req_storage > POLICY_TASK_MAX_STORAGE:
             return None, "Too much storage requested.", \
