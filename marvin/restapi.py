@@ -97,7 +97,7 @@ class Resource:
         nodeid = nodeid[1:]
         data = web.input()
 
-        role = rest_api.get_role(web.ctx)
+        uid, role, name = rest_api.get_user(web.ctx)
         if "type" in data.keys():
             if role == scheduler.ROLE_ADMIN:
                 result = rest_api.scheduler.set_node_types(nodeid,
@@ -111,6 +111,9 @@ class Resource:
                 web.ctx.status = '401 Unauthorized'
                 return error("You'd have to be an admin to do that")
         elif role == scheduler.ROLE_NODE:
+            if name != ("Node %i" % nodeid):
+                web.ctx.status = ''
+                return error("Wrong user to update this status. (%s)" % name)
             now = int(time.time())
             rest_api.scheduler.set_heartbeat(nodeid, now)
             data = rest_api.scheduler.get_schedule(nodeid=nodeid)
@@ -165,7 +168,7 @@ class Schedule:
         return dumps(tasks)
 
     def PUT(self, schedid):
-        role = rest_api.get_role(web.ctx)
+        uid, role, name = rest_api.get_user(web.ctx)
         if role != scheduler.ROLE_NODE:
             web.ctx.status = '401 Unauthorized'
             return error("You'd have to be a node to do that")
@@ -177,6 +180,14 @@ class Schedule:
             web.ctx.status = '400 Bad Request'
             return error("Scheduling id missing.")
         schedid = schedid[1:]
+        tasks = rest_api.scheduler.get_schedule(schedid=schedid, past=True)
+        if len(tasks)==0:
+            web.ctx.status = '404 Not Found'
+            return error("Could not find schedule entry with this id.")
+        nodeid = tasks[0]['nodeid']
+        if name != ("Node %i" % nodeid):
+            web.ctx.status = '401 Unauthorized'
+            return error("Wrong user to updated this status (%s)" % name)
         if params['status'] in scheduler.TASK_STATUS_CODES:
             rest_api.scheduler.set_status(
                 schedid=schedid,
@@ -212,7 +223,7 @@ class Experiment:
         return dumps(tasks)
 
     def POST(self, ignored):
-        user, role = rest_api.get_user(web.ctx)
+        user, role, name = rest_api.get_user(web.ctx)
         if role != scheduler.ROLE_USER:
             web.ctx.status = '401 Unauthorized'
             return error("You'd have to be a user to do that.")
@@ -410,4 +421,4 @@ class RestAPI:
         user = self.scheduler.get_users(ssl=self.get_fingerprint(web.ctx))
         if user is None or len(user) == 0:
             return None
-        return user[0]['id'], user[0]['role']  # user, role
+        return user[0]['id'], user[0]['role'], user[0]['name']
