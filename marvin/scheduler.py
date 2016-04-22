@@ -250,10 +250,14 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
             for node in nodes:
                 c.execute(
                     "SELECT tag, type FROM node_type WHERE nodeid = ?",
-                    (node['id'],))
+                    (node.get('id'),))
                 typerows = c.fetchall()
                 node['type'] = dict([(row['tag'], row['type'])
                                      for row in typerows])
+                c.execute("SELECT * FROM node_interfaces WHERE nodeit = ?",
+                    (node.get('id'),))
+                interfaces = c.fetchall()
+                node['interfaces'] = [dict(x) for x in interfaces] or []
         return nodes
 
     def set_node_types(self, nodeid, nodetypes):
