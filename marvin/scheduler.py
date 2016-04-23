@@ -122,7 +122,7 @@ class Scheduler:
             for key, tag in [('Country', 'country'),
                              ('Model', 'model'),
                              ('ProjectName', 'project'),
-                             ('Status', 'status')]:
+                             ('Status', 'type')]:
                 value = node.get(key)
                 if value is not None:
                     types.append((tag, value.lower()))
