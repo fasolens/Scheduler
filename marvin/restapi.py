@@ -159,6 +159,8 @@ class Schedule:
         else:
             schedid = resource[1:]
             tasks = rest_api.scheduler.get_schedule(schedid=schedid, past=True)
+            if tasks is not None:
+                tasks = tasks[0]
 
         if tasks is None:
             web.ctx.status = '404 Not Found'
@@ -214,6 +216,8 @@ class Experiment:
         else:
             expid = task[1:]
             tasks = rest_api.scheduler.get_experiments(expid=expid)
+            if tasks is not None:
+                tasks = tasks[0]
 
         if tasks is None:
             web.ctx.status = '404 Not Found'
