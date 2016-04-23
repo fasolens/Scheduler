@@ -11,23 +11,13 @@ CID=$( docker ps | grep $CONTAINER | awk '{print $1}' )
 if [ -z "$CID" ]; then
   echo "Container is no longer running.";
 else
-  MNS="ip netns exec monroe";
-
-  INTERFACES="usb0 usb1 usb2 wlan0 eth0";
-  for IF in $INTERFACES; do
-    if [ -z "$($MNS ip link|grep $IF)" ]; then continue; fi
-    $MNS ip link delete $IF;
-  done
-
-  ip netns delete monroe;
-
   # Stop the container if it is running.
   docker stop --time=10 $CID;
 fi
 
 if [ -z "$STATUS" ]; then
-  echo 'finished' > $BASEDIR/$SCHEDID.status;
-else 
+  echo 'stopped' > $BASEDIR/$SCHEDID.status;
+else
   echo $STATUS > $BASEDIR/$SCHEDID.status;
 fi
 
@@ -46,8 +36,7 @@ docker rmi $(docker images -a|grep '^<none>'|awk "{print \$3}") 2>/dev/null
 # TODO sync outdir
 
 umount $BASEDIR/$SCHEDID            2>/dev/null  || echo 'Directory is no longer mounted.'
-rmdir  $BASEDIR/$SCHEDID            2>/dev/null   
-rm     $BASEDIR/${SCHEDID}.disk     2>/dev/null 
+rmdir  $BASEDIR/$SCHEDID            2>/dev/null
+rm     $BASEDIR/${SCHEDID}.disk     2>/dev/null
 rm     $BASEDIR/${SCHEDID}.counter  2>/dev/null
 rm     $BASEDIR/${SCHEDID}.conf     2>/dev/null
-

@@ -19,7 +19,7 @@ if [ -f $BASEDIR/$SCHEDID.conf ]; then
 fi
 if [ -z "$QUOTA_DISK" ]; then
   QUOTA_DISK=0; #KB!
-else 
+else
   QUOTA_DISK=$(( $QUOTA_DISK / 1000 ))
 fi;
 
@@ -40,7 +40,7 @@ fi
 if [ $QUOTA_DISK -eq 0 ]; then
     exit 0
 fi
-if [ ! -d $BASEDIR/$SCHEDID ]; then 
+if [ ! -d $BASEDIR/$SCHEDID ]; then
     mkdir -p $BASEDIR/$SCHEDID;
     dd if=/dev/zero of=$BASEDIR/${SCHEDID}.disk bs=1000 count=$QUOTA_DISK;
     mkfs.ext4 $BASEDIR/${SCHEDID}.disk -F -L $SCHEDID;
