@@ -5,6 +5,7 @@ SCHEDID=$1
 CONTAINER=monroe-$SCHEDID
 
 BASEDIR=/experiments/user
+mkdir -p $BASEDIR
 
 if [ -f $BASEDIR/$SCHEDID.conf ]; then
   CONFIG=$(cat $BASEDIR/$1.conf);
