@@ -202,15 +202,17 @@ class SchedulingClient:
     def post_status(self):
         try:
             for status in self.status_queue[:]:
-                print "Trying to set status %s." % (status,)
-                requests.put(
+                result = requests.put(
                     config['rest-server'] + '/schedules/' + status['schedid'],
                     data=status,
                     cert=self.cert,
                     verify=False)
+                if result.status_code != 200:
+                    log.debug("Setting status %s of task %s failed: %s" % \
+                              (str(status), status['schedid'], result.text)) 
                 self.status_queue.pop()
         except Exception, ex:
-            print ex
+            log.error(str(ex))
             pass
 
     def read_jobs(self):
