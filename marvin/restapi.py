@@ -190,10 +190,11 @@ class Schedule:
         if name != ("Node %i" % nodeid):
             web.ctx.status = '401 Unauthorized'
             return error("Wrong user to updated this status (%s)" % name)
-        if params['status'] in scheduler.TASK_STATUS_CODES:
+        status = params.get('status','').strip()
+        if status in scheduler.TASK_STATUS_CODES:
             rest_api.scheduler.set_status(
                 schedid=schedid,
-                status=params['status'])
+                status=status)
             return error("Ok.")
         else:
             web.ctx.status = '400 Bad Request'

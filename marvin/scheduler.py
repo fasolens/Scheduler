@@ -30,6 +30,7 @@ TASK_STATUS_CODES = [
     'started',     # node has successfully started the experiment
     'redeployed',  # currently unused
     'restarted',   # node has restarted the experiment after a node failure
+    'stopped',     # experiment was stopped by the scheduler FIXME (detect finished)
     'finished',    # experiment completed successfully
     'failed',      # experiment failed
     'canceled',    # user deleted experiment, task not deployed (but some were)
