@@ -356,7 +356,7 @@ class SchedulingClient:
             except IOError as e:
                 traceback.print_exc(file=sys.stdout)
                 log.error("IOError %s" % e.message)
-                break
+                time.sleep(60) # trying again after 60 seconds
             except Exception as e:
                 traceback.print_exc(file=sys.stdout)
                 log.error(
