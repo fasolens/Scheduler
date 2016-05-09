@@ -289,7 +289,7 @@ class SchedulingClient:
                     verify=False)
                 task = result.json()
                 try:
-                    self.add_task(task[0], sched)
+                    self.add_task(task, sched)
                 except IndexError:
                     traceback.print_exc(file=sys.stdout)
                     log.error(
