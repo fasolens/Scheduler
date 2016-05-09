@@ -24,6 +24,7 @@ COUNT=$(($COUNT + 1))
 echo $COUNT > $BASEDIR/${SCHEDID}.counter
 
 NODEID=$(</etc/nodeid)
+GUID="${SCHEDID}.${NODEID}.${COUNT}"
 
 ### START THE CONTAINER ###############################################
 
@@ -44,7 +45,7 @@ docker run -d \
        --cap-add NET_RAW \
        $MOUNT_DISK \
        $CONTAINER \
-       --guid ${SCHEDID}.${NODEID}.${COUNT}
+       --guid $GUID
 
 # CID: the runtime container ID
 CID=$(docker ps --no-trunc | grep $CONTAINER | awk '{print $1}' | head -n 1)
@@ -65,4 +66,3 @@ else
 fi
 
 echo 'started' > $BASEDIR/$SCHEDID.status
-# TODO log status to sysevent and return a success value to the scheduler
