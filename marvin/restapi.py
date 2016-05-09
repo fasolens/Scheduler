@@ -111,7 +111,7 @@ class Resource:
                 web.ctx.status = '401 Unauthorized'
                 return error("You'd have to be an admin to do that")
         elif role == scheduler.ROLE_NODE:
-            if name != ("Node %i" % nodeid):
+            if name != ("Node %s" % nodeid):
                 web.ctx.status = ''
                 return error("Wrong user to update this status. (%s)" % name)
             now = int(time.time())
