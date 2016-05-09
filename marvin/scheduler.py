@@ -30,7 +30,7 @@ TASK_STATUS_CODES = [
     'started',     # node has successfully started the experiment
     'redeployed',  # currently unused
     'restarted',   # node has restarted the experiment after a node failure
-    'stopped',     # experiment was stopped by the scheduler FIXME (detect finished)
+    'stopped',     # experiment stopped by scheduler FIXME (detect finished)
     'finished',    # experiment completed successfully
     'failed',      # experiment failed
     'canceled',    # user deleted experiment, task not deployed (but some were)
@@ -134,7 +134,6 @@ class Scheduler:
                 c.execute(
                     "INSERT OR IGNORE INTO node_type VALUES (?, ?, ?)",
                     (node["NodeId"], tag, type_))
-        self.db().commit()
 
         devices = inventory_api("nodes/devices")
         if not devices:
@@ -155,6 +154,7 @@ class Scheduler:
                       (device.get('NodeId'), device.get('DeviceId'),
                        device.get('MccMnc'), device.get('Operator'),
                        0, 0, QUOTA_MONTHLY, 0, DEVICE_CURRENT))
+        self.db().commit()
 
     connections = {}
 
