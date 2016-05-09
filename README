@@ -94,8 +94,11 @@ The following parameters are used to schedule an experiment:
   * stop      - a UNIX time stamp, the stop time **OR**
   * duration  - runtime of the experiment in seconds.
   * nodecount - the number of nodes to allocate this experiment to
-  * nodetypes - the type filter of required and rejected node types, e.g. "mobile,spain|norway,-apu1"
+  * nodetypes - the type filter of required and rejected node types,
+                Valid queries include a tag and value, e.g. type:testing
+                Valid tags are [model, project, status, type]
                 Supports the operators OR(|), NOT(-) and AND(,) in this strict order of precedence.
+                EXAMPLE: type:testing,country:spain,-model:apu2d
   * script    - the experiment to execute, currently in the form of a docker pull URL
 
 These are defined as scheduling options, interpreted by the scheduling server:
