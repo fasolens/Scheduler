@@ -104,18 +104,14 @@ class SchedulingClient:
         for taskid in relaunch:
             log.debug(
                 "Restarting task %s: %s %s %s" %
-                (taskid, self.starthook, taskid, "restart"))
+                (taskid, self.starthook, taskid, "restarted"))
             pro = Popen(
                 [self.starthook,
                  taskid,
                  "restart"],
                 stdout=PIPE,
                 stdin=PIPE)
-            pro.communicate()[0]
-            if pro.returncode == 0:
-                self.set_status(taskid, "restarted")
-            else:
-                self.set_status(taskid, "failed")
+            pro.communicate()
 
     def add_task(self, task, sched):
         """upon querying a task, add it to local atq"""
@@ -165,12 +161,9 @@ class SchedulingClient:
             log.warning(
                 "Task %s has a past start time. Running %s" %
                 (id, starthook))
-            pro = Popen([self.starthook, id], stdout=PIPE, stdin=PIPE)
-            pro.communicate()[0]
-            if pro.returncode == 0:
-                self.set_status(id, "restarted")
-            else:
-                self.set_status(id, "failed")
+            pro = Popen([self.starthook, id, "restarted"], stdout=PIPE, stdin=PIPE)
+            pro.communicate()
+            if pro.returncode != 0:
                 return
 
         timestamp = sched['stop']
@@ -265,7 +258,7 @@ class SchedulingClient:
         for sched in schedule:
             schedid = str(sched["id"])   # scheduling id. schedid n:1 taskid
             expid = str(sched["expid"])
-            if sched["status"] in ['failed', 'finished']:
+            if sched["status"] in ['failed', 'finished', 'stopped']:
                 log.debug(
                     "Not scheduling aborted task "
                     "(Taskid %s, scheduling id %s)" % (expid, schedid))

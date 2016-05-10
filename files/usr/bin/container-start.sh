@@ -12,6 +12,8 @@ if [ -f $BASEDIR/$SCHEDID.conf ]; then
   CONFIG=$(cat $BASEDIR/$1.conf);
 fi
 
+NOERROR_CONTAINER_IS_RUNNING=0
+
 ERROR_CONTAINER_DID_NOT_START=10
 ERROR_NETWORK_CONTEXT_NOT_FOUND=11
 
@@ -31,6 +33,11 @@ GUID="${SCHEDID}.${NODEID}.${COUNT}"
 
 if [ -d $BASEDIR/$SCHEDID ]; then
     MOUNT_DISK="-v $BASEDIR/$SCHEDID:$BASEDIR"
+fi
+
+# check that this container is not running yet
+if [ ! -z "$(docker ps | grep monroe-$SCHEDID)" ]; then
+    exit NOERROR_CONTAINER_IS_RUNNING;
 fi
 
 # identify the monroe/noop container, running in the
@@ -72,3 +79,6 @@ else
   echo $STATUS > $BASEDIR/$SCHEDID.status
 fi
 
+wait $PID
+
+echo 'finished' > $BASEDIR/$SCHEDID.status

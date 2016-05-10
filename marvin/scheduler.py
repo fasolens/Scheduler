@@ -26,13 +26,12 @@ ERROR_PARSING_FAILED = "sc2"
 
 TASK_STATUS_CODES = [
     'defined',     # experiment is created in the scheduler
-    'deployed',    # node has deployed the experiment, scheduled start time
+    'deployed',    # node has deployed the experiment, scheduled a start time
     'started',     # node has successfully started the experiment
-    'redeployed',  # currently unused
     'restarted',   # node has restarted the experiment after a node failure
-    'stopped',     # experiment stopped by scheduler FIXME (detect finished)
-    'finished',    # experiment completed successfully
-    'failed',      # experiment failed
+    'stopped',     # experiment stopped by scheduler 
+    'finished',    # experiment completed, exited before being stopped
+    'failed',      # scheduling process failed
     'canceled',    # user deleted experiment, task not deployed (but some were)
     'aborted',     # user deleted experiment, task had been deployed
 ]
