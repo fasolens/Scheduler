@@ -40,3 +40,4 @@ rmdir  $BASEDIR/$SCHEDID            2>/dev/null
 rm     $BASEDIR/${SCHEDID}.disk     2>/dev/null
 rm     $BASEDIR/${SCHEDID}.counter  2>/dev/null
 rm     $BASEDIR/${SCHEDID}.conf     2>/dev/null
+rm     $BASEDIR/${SCHEDID}.pid      2>/dev/null

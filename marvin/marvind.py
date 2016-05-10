@@ -17,6 +17,8 @@ from os import unlink
 import logging
 import configuration
 
+import os
+import errno
 import zmq
 import requests
 import simplejson as json
@@ -87,7 +89,7 @@ class SchedulingClient:
 
         At this point we do not have an updated schedule (and may not be able
         to get one, because of connectivity issues), but we can resume any task
-        that has configured a stop hook.
+        that has configured a stop hook and is not finished.
         """
         self.jobs = self.read_jobs()
         relaunch = []
@@ -95,11 +97,18 @@ class SchedulingClient:
             if " " in command:
                 hook, taskid = command.split(" ")
                 if hook == self.stophook:
-                    if not self.starthook + " " + taskid in self.jobs.values():
-                        log.debug(
-                            "During marvind startup, task %s had a stop hook, "
-                            "but no start hook." % (taskid))
-                        relaunch.append(taskid)
+                    if self.starthook + " " + taskid in self.jobs.values():
+                        continue
+                    log.debug(
+                        "During marvind startup, task %s had a stop hook, "
+                        "but no start hook." % (taskid))
+                    try:
+                        if os.path.isfile("%s/%s.pid"):
+                            log.debug("PID file still exists, restarting task %s" % taskid)
+                            relaunch.append(taskid)
+                    except Exception,ex:
+                        log.debug("Could not check task PID, %s" % ex.message)
+                        pass
 
         for taskid in relaunch:
             log.debug(
@@ -108,7 +117,7 @@ class SchedulingClient:
             pro = Popen(
                 [self.starthook,
                  taskid,
-                 "restart"],
+                 "restarted"],
                 stdout=PIPE,
                 stdin=PIPE)
             pro.communicate()
@@ -258,9 +267,9 @@ class SchedulingClient:
         for sched in schedule:
             schedid = str(sched["id"])   # scheduling id. schedid n:1 taskid
             expid = str(sched["expid"])
-            if sched["status"] in ['failed', 'finished', 'stopped']:
+            if sched["status"] in ['failed', 'finished', 'stopped', 'aborted', 'canceled']:
                 log.debug(
-                    "Not scheduling aborted task "
+                    "Not scheduling finished or aborted task "
                     "(Taskid %s, scheduling id %s)" % (expid, schedid))
                 continue
 
@@ -269,9 +278,31 @@ class SchedulingClient:
 
             known = self.jobs.values()
             log.debug("known tasks:\n" + json.dumps(self.jobs))
-            # FIXME: we'll actually have to check if the wrapup task exists,
-            #       in case that the task has started already
-            if (starthook not in known) and (stophook not in known):
+            if starthook in known:
+                # task is known and scheduled
+                if not stophook in known:
+                    # FIXME: we'll actually have to check if the wrapup task exists,
+                    #       in case that the task was started already
+                    # TODO: restore the stop hook - how can this happen?
+                    pass
+                continue
+            elif stophook in known:
+                # task is known and started
+                # TODO: check whether the task is running.
+                try:
+                    fd = open("%s/%s.pid" % (self.statdir, schedid))
+                    pid = int(fd.read().strip())
+                    fd.close()
+                    try:
+                        os.kill(pid, 0)
+                    except OSError as err: 
+                        if err.errno == errno.ESRCH: # PID does no longer exist
+                            self.set_status(schedid, 'finished')
+                            unlink("%s/%s.pid" % (self.statdir, schedid))
+                except:
+                    log.debug("reading PID file for task %s failed" % schedid)
+                continue
+            else:
                 log.debug("unknown task: %s" % schedid)
                 result = requests.get(
                     config[

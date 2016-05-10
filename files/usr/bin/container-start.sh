@@ -37,7 +37,7 @@ fi
 
 # check that this container is not running yet
 if [ ! -z "$(docker ps | grep monroe-$SCHEDID)" ]; then
-    exit NOERROR_CONTAINER_IS_RUNNING;
+    exit $NOERROR_CONTAINER_IS_RUNNING;
 fi
 
 # identify the monroe/noop container, running in the
@@ -73,12 +73,9 @@ else
   exit $ERROR_CONTAINER_DID_NOT_START;
 fi
 
+echo $PID > $BASEDIR/$SCHEDID.pid
 if [ -z "$STATUS" ]; then
   echo 'started' > $BASEDIR/$SCHEDID.status
 else
   echo $STATUS > $BASEDIR/$SCHEDID.status
 fi
-
-wait $PID
-
-echo 'finished' > $BASEDIR/$SCHEDID.status
