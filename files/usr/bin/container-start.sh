@@ -2,6 +2,7 @@
 set -e
 
 SCHEDID=$1
+STATUS=$2
 CONTAINER=monroe-$SCHEDID
 
 BASEDIR=/experiments/user
@@ -65,4 +66,9 @@ else
   exit $ERROR_CONTAINER_DID_NOT_START;
 fi
 
-echo 'started' > $BASEDIR/$SCHEDID.status
+if [ -z "$STATUS" ]; then
+  echo 'started' > $BASEDIR/$SCHEDID.status
+else
+  echo $STATUS > $BASEDIR/$SCHEDID.status
+fi
+
