@@ -148,12 +148,13 @@ class Scheduler:
             if not device.get('MccMnc'):
                 continue
             c.execute("UPDATE node_interface SET status = ? "
-                      "WHERE deviceid = ?",
+                      "WHERE imei = ?",
                       (DEVICE_CURRENT, node.get('DeviceId'),))
             c.execute("INSERT OR IGNORE INTO node_interface "
                       "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                       (device.get('NodeId'), device.get('DeviceId'),
                        device.get('MccMnc'), device.get('Operator'),
+                       device.get('Iccid'),
                        0, 0, QUOTA_MONTHLY, 0, DEVICE_CURRENT))
         self.db().commit()
 
@@ -186,10 +187,12 @@ CREATE TABLE IF NOT EXISTS node_type (nodeid INTEGER NOT NULL,
     FOREIGN KEY (nodeid) REFERENCES nodes(id),
     PRIMARY KEY (nodeid, tag));
 CREATE TABLE IF NOT EXISTS node_interface (nodeid INTEGER NOT NULL,
-    deviceid INTEGER NOT NULL, mccmnc INTEGER NOT NULL,
-    operator TEXT NOT NULL, quota_value INTEGER NOT NULL,
+    imei INTEGER NOT NULL, mccmnc INTEGER NOT NULL,
+    operator TEXT NOT NULL, iccid INTEGER NOT NULL,
+    quota_value INTEGER NOT NULL,
     quota_reset INTEGER, quota_type INTEGER NOT NULL,
-    quota_reset_date INTEGER, status TEXT NOT NULL);
+    quota_reset_date INTEGER, status TEXT NOT NULL,
+    PRIMARY KEY (nodeid, imei, iccid));
 CREATE TABLE IF NOT EXISTS owners (id INTEGER PRIMARY KEY ASC,
     name TEXT UNIQUE NOT NULL, ssl_id TEXT UNIQUE NOT NULL,
     role TEXT NOT NULL);
