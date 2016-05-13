@@ -24,16 +24,18 @@ log.debug("Configuration loaded: " + str(config))
 ERROR_INSUFFICIENT_RESOURCES = "sc1"
 ERROR_PARSING_FAILED = "sc2"
 
-TASK_STATUS_CODES = [
-    'defined',     # experiment is created in the scheduler
-    'deployed',    # node has deployed the experiment, scheduled a start time
-    'started',     # node has successfully started the experiment
-    'restarted',   # node has restarted the experiment after a node failure
+TASK_FINAL_CODES  = [
     'stopped',     # experiment stopped by scheduler 
     'finished',    # experiment completed, exited before being stopped
     'failed',      # scheduling process failed
     'canceled',    # user deleted experiment, task not deployed (but some were)
     'aborted',     # user deleted experiment, task had been deployed
+] 
+TASK_STATUS_CODES = TASK_FINAL_CODES + [
+    'defined',     # experiment is created in the scheduler
+    'deployed',    # node has deployed the experiment, scheduled a start time
+    'started',     # node has successfully started the experiment
+    'restarted',   # node has restarted the experiment after a node failure
 ]
 
 # POLICY CHECKS AND VALUES
@@ -437,13 +439,21 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
     def set_status(self, schedid, status):
         c = self.db().cursor()
         if status in TASK_STATUS_CODES:
-            c.execute(
-                "UPDATE schedule SET status = ? WHERE id = ?",
-                (status, schedid))
-            self.db().commit()
-            if c.rowcount == 1:
-                return True
-        return False
+            c.execute("SELECT status FROM schedule WHERE id = ?", (schedid,))
+            result = c.fetchone()
+            if not result:
+                return False, "Could not find scheduling ID"
+            oldstat = result.get('status')
+            if oldstat not in TASK_FINAL_CODES:
+                c.execute(
+                    "UPDATE schedule SET status = ? WHERE id = ?",
+                    (status, schedid))
+                self.db().commit()
+                if c.rowcount == 1:
+                    return True, "Ok."
+            else:
+                return False, "Status %s cannot be reset." % str(oldstat)
+        return False, "Unknown status code %s." % str(status)
 
     def get_experiments(self, expid=None, userid=None, nodeid=None):
         c = self.db().cursor()

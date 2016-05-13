@@ -192,10 +192,14 @@ class Schedule:
             return error("Wrong user to updated this status (%s)" % name)
         status = params.get('status','').strip()
         if status in scheduler.TASK_STATUS_CODES:
-            rest_api.scheduler.set_status(
+            result, errmsg = rest_api.scheduler.set_status(
                 schedid=schedid,
                 status=status)
-            return error("Ok.")
+            if result:
+                return error("Ok.")
+            else:
+                web.ctx.status = '400 Bad request'
+                return error(errmsg)
         else:
             web.ctx.status = '400 Bad Request'
             return error("Unknown status code.")
