@@ -212,9 +212,10 @@ class SchedulingClient:
                 if result.status_code != 200:
                     log.debug("Setting status %s of task %s failed: %s" % \
                               (str(status), status['schedid'], result.text)) 
-                self.status_queue.pop()
+                else:
+                    self.status_queue.pop()
         except Exception, ex:
-            log.error(str(ex))
+            log.error("Exception in post_status: %s" % str(ex))
             pass
 
     def read_jobs(self):
@@ -241,8 +242,8 @@ class SchedulingClient:
                     jobs[atid] = command
                     log.debug("definition of task %s is %s" % (atid, command))
 
-        self.jobs.update(jobs)
-        return self.jobs
+        self.jobs = jobs
+        return jobs
 
     def update_schedule(self, data):
         log.debug("update_schedule (%s)" % json.dumps(data))
