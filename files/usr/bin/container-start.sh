@@ -9,7 +9,7 @@ BASEDIR=/experiments/user
 mkdir -p $BASEDIR
 
 if [ -f $BASEDIR/$SCHEDID.conf ]; then
-  CONFIG=$(cat $BASEDIR/$1.conf);
+  CONFIG=$(cat $BASEDIR/$SCHEDID.conf);
 fi
 
 NOERROR_CONTAINER_IS_RUNNING=0
@@ -28,6 +28,11 @@ echo $COUNT > $BASEDIR/${SCHEDID}.counter
 
 NODEID=$(</etc/nodeid)
 GUID="${SCHEDID}.${NODEID}.${COUNT}"
+
+# replace guid in the configuration
+
+CONFIG=$(echo $CONFIG | jq '.guid="'$GUID'"')
+echo $CONFIG > $BASEDIR/$SCHEDID.conf
 
 ### START THE CONTAINER ###############################################
 
@@ -53,8 +58,7 @@ docker run -d \
        --cap-add NET_RAW \
        -v $BASEDIR/$SCHEDID.conf:/monroe/config:ro \
        $MOUNT_DISK \
-       $CONTAINER \
-       --guid $GUID
+       $CONTAINER 
 
 # CID: the runtime container ID
 CID=$(docker ps --no-trunc | grep $CONTAINER | awk '{print $1}' | head -n 1)
