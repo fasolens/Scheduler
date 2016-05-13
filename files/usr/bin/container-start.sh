@@ -32,7 +32,7 @@ GUID="${SCHEDID}.${NODEID}.${COUNT}"
 ### START THE CONTAINER ###############################################
 
 if [ -d $BASEDIR/$SCHEDID ]; then
-    MOUNT_DISK="-v $BASEDIR/$SCHEDID:$BASEDIR"
+    MOUNT_DISK="-v $BASEDIR/$SCHEDID:/monroe/results -v $BASEDIR/$SCHEDID:/outdir"
 fi
 
 # check that this container is not running yet
@@ -51,6 +51,7 @@ docker run -d \
        --net=container:$MONROE_NOOP \
        --cap-add NET_ADMIN \
        --cap-add NET_RAW \
+       -v $BASEDIR/$SCHEDID.conf:/monroe/config:ro \
        $MOUNT_DISK \
        $CONTAINER \
        --guid $GUID
