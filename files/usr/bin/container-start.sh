@@ -16,6 +16,7 @@ NOERROR_CONTAINER_IS_RUNNING=0
 
 ERROR_CONTAINER_DID_NOT_START=10
 ERROR_NETWORK_CONTEXT_NOT_FOUND=11
+ERROR_IMAGE_NOT_FOUND=12
 
 # make sure network namespaces are set up
 mkdir -p /var/run/netns
@@ -27,7 +28,13 @@ COUNT=$(($COUNT + 1))
 echo $COUNT > $BASEDIR/${SCHEDID}.counter
 
 NODEID=$(</etc/nodeid)
-GUID="${SCHEDID}.${NODEID}.${COUNT}"
+IMAGEID=$(docker images -q --no-trunc monroe-$SCHEDID)
+
+if [ -z "$IMAGEID"]; then
+    exit $ERROR_IMAGE_NOT_FOUND;
+fi
+
+GUID="${IMAGEID}.${SCHEDID}.${NODEID}.${COUNT}"
 
 # replace guid in the configuration
 
