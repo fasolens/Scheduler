@@ -158,7 +158,7 @@ class SchedulingClient:
             return
 
         now  = int(time.time())
-        if timestamp > now + 30:    # within 30 seconds from now
+        if timestamp > now + 60:   
             timestring = datetime.fromtimestamp(
                 timestamp).strftime(
                     AT_TIME_FORMAT)  # we are losing the seconds
