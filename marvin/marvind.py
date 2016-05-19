@@ -163,6 +163,9 @@ class SchedulingClient:
             pro = Popen(["at", timestring], stdout=PIPE, stdin=PIPE)
             pro.communicate(input=starthook + "\n")[0]
             if pro.returncode != 0:
+                log.warning(
+                    "Start hook for task %s returned non-zero (%s). Failed." %
+                    (id, pro.returncode))
                 self.set_status(id, "failed")
                 # TODO: handle tasks that failed scheduling
         else:
@@ -229,7 +232,7 @@ class SchedulingClient:
         jobs = {}
         for job in atq:
             atid = int(job.split("\t")[0])
-            if atid not in self.jobs:
+            if atid not in jobs:
                 log.debug("reading definition of %s from local atq" % atid)
                 pro = Popen(["at", "-c", str(atid)], stdout=PIPE)
                 output = pro.communicate()[0]
