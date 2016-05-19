@@ -143,17 +143,21 @@ class SchedulingClient:
             fd = open("%s/%s.conf" % (self.confdir, id),'w')
             fd.write(deploy_opts)
             fd.close()
+            log.debug(
+                "Deploying task %s: %s " %
+                (id, self.deployhook))
             pro = Popen(
                 [self.deployhook,
                  id],
                 stdout=PIPE,
                 stdin=PIPE)
-            output = pro.communicate()[0]
+            output, serr = pro.communicate()[0]
             if pro.returncode == 0:
                 self.set_status(id, "deployed")
             else:
                 # TODO detect acceptable failure codes (delayed deployment)
                 print output 
+                print serr 
                 return
 
             timestring = datetime.fromtimestamp(
@@ -161,7 +165,7 @@ class SchedulingClient:
                     AT_TIME_FORMAT)  # we are losing the seconds
             log.debug("Trying to set at using %s" % timestring)
             pro = Popen(["at", timestring], stdout=PIPE, stdin=PIPE)
-            pro.communicate(input=starthook + "\n")[0]
+            sout, serr = pro.communicate(input=starthook + "\n")[0]
             if pro.returncode != 0:
                 log.warning(
                     "Start hook for task %s returned non-zero (%s). Failed." %
