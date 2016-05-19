@@ -38,7 +38,8 @@ else:
     nope, cfile = sys.argv
 
 config = configuration.select('marvind', cfile)
-logging.basicConfig(filename=config['log']['file'],
+#logging.basicConfig(filename=config['log']['file'],
+logging.basicConfig(
                     level=config['log']['level'])
 log = logging.getLogger('marvind')
 
@@ -127,7 +128,6 @@ class SchedulingClient:
         log.debug("add_task (%s, %s)" % (json.dumps(task), json.dumps(sched)))
 
         id   = str(sched['id'])
-        now  = int(time.time())
 
         starthook = self.starthook + " " + id 
         stophook = self.stophook + " " + id
@@ -137,66 +137,75 @@ class SchedulingClient:
         deploy_conf.update({'script': task['script']})
         deploy_opts = json.dumps(deploy_conf)
 
-        if timestamp > now:
-            print [self.deployhook, id, task['script'], deploy_opts]
-            # TODO: add to configuration
-            fd = open("%s/%s.conf" % (self.confdir, id),'w')
-            fd.write(deploy_opts)
-            fd.close()
-            log.debug(
-                "Deploying task %s: %s " %
-                (id, self.deployhook))
-            pro = Popen(
-                [self.deployhook,
-                 id],
-                stdout=PIPE,
-                stdin=PIPE)
-            output, serr = pro.communicate()[0]
-            if pro.returncode == 0:
-                self.set_status(id, "deployed")
-            else:
-                # TODO detect acceptable failure codes (delayed deployment)
-                print output 
-                print serr 
-                return
+        # run deploy hook, which should be safe to be re-run
+        print [self.deployhook, id, task['script'], deploy_opts]
+        fd = open("%s/%s.conf" % (self.confdir, id),'w')
+        fd.write(deploy_opts)
+        fd.close()
+        log.debug(
+            "Deploying task %s: %s " %
+            (id, self.deployhook))
+        pro = Popen(
+            [self.deployhook, id],
+            stdout=PIPE,
+            stdin=PIPE)
+        output, serr = pro.communicate()
+        print output 
+        print serr
+        if pro.returncode == 0:
+            self.set_status(id, "deployed")
+        else:
+            # TODO detect acceptable failure codes (delayed deployment)
+            return
 
+        now  = int(time.time())
+        if timestamp > now + 30:    # within 30 seconds from now
             timestring = datetime.fromtimestamp(
                 timestamp).strftime(
                     AT_TIME_FORMAT)  # we are losing the seconds
             log.debug("Trying to set at using %s" % timestring)
             pro = Popen(["at", timestring], stdout=PIPE, stdin=PIPE)
-            sout, serr = pro.communicate(input=starthook + "\n")[0]
+            output, serr = pro.communicate(input=starthook + "\n")
+            print output 
+            print serr
+            if pro.returncode != 0:
+                log.warning(
+                    "Atq start hook for task %s returned non-zero (%s). Failed." %
+                    (id, pro.returncode))
+                self.set_status(id, "failed")
+                # TODO: handle tasks that failed scheduling
+        else:
+            # if the task has already started, run it immediately 
+            log.warning(
+                "Task %s has a past start time. Running %s" %
+                (id, starthook))
+            pro = Popen([self.starthook, id, "restarted"], stdout=PIPE, stdin=PIPE)
+            output, serr = pro.communicate()
+            print output 
+            print serr
             if pro.returncode != 0:
                 log.warning(
                     "Start hook for task %s returned non-zero (%s). Failed." %
                     (id, pro.returncode))
                 self.set_status(id, "failed")
-                # TODO: handle tasks that failed scheduling
-        else:
-            # if the task has already started, deploy and run it asap
-            log.warning(
-                "Task %s has a past start time. Running %s" %
-                (id, starthook))
-            pro = Popen([self.starthook, id, "restarted"], stdout=PIPE, stdin=PIPE)
-            pro.communicate()
-            if pro.returncode != 0:
-                return
 
         timestamp = sched['stop']
-        if timestamp > now:
-            timestring = datetime.fromtimestamp(
-                timestamp).strftime(
-                    AT_TIME_FORMAT)  # we are losing the seconds
-            log.debug("Trying to set at using %s" % timestring)
-            pro = Popen(["at", timestring], stdout=PIPE, stdin=PIPE)
-            pro.communicate(input=stophook + "\n")[0]
-            if pro.returncode != 0:
-                log.error("Failed to set stop hook for task %i" % stophook)
-                self.set_status(id, "failed")
-                # TODO: handle tasks that failed scheduling
-                # FIXME: if this happens, it is actually quite serious.
-                # We should never keep a task alive that is not scheduled
-                # to be terminated.
+        timestring = datetime.fromtimestamp(
+            timestamp).strftime(
+                AT_TIME_FORMAT)  # we are losing the seconds
+        log.debug("Trying to set at using %s" % timestring)
+        pro = Popen(["at", timestring], stdout=PIPE, stdin=PIPE)
+        output, serr = pro.communicate(input=stophook + "\n")
+        print output 
+        print serr
+        if pro.returncode != 0:
+            log.error("Failed to set stop hook for task %i" % stophook)
+            self.set_status(id, "failed")
+
+        # TODO: handle tasks that failed scheduling
+        # FIXME: if this happens, it is actually quite serious.
+        # We should never keep a task alive that is not scheduled
+        # to be terminated.
 
     def set_status(self, schedid, status):
         log.debug("Setting status for task %s to %s" % (schedid, status))
