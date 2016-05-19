@@ -150,8 +150,8 @@ class Scheduler:
             c.execute("UPDATE node_interface SET status = ? "
                       "WHERE imei = ?",
                       (DEVICE_CURRENT, node.get('DeviceId'),))
-            c.execute("INSERT OR IGNORE INTO node_interface "
-                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            c.execute("INSERT OR REPLACE INTO node_interface "
+                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                       (device.get('NodeId'), device.get('DeviceId'),
                        device.get('MccMnc'), device.get('Operator'),
                        device.get('Iccid'),
