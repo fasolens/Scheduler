@@ -38,8 +38,7 @@ else:
     nope, cfile = sys.argv
 
 config = configuration.select('marvind', cfile)
-#logging.basicConfig(filename=config['log']['file'],
-logging.basicConfig(
+logging.basicConfig(filename=config['log']['file'],
                     level=config['log']['level'])
 log = logging.getLogger('marvind')
 
