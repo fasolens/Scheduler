@@ -124,6 +124,9 @@ class Scheduler:
             for key, tag in [('Country', 'country'),
                              ('Model', 'model'),
                              ('ProjectName', 'project'),
+                             ('Latitude', 'latitude'),
+                             ('Longitude', 'longitude'),
+                             ('ProjectName', 'site'),
                              ('Status', 'type')]:
                 value = node.get(key)
                 if value is not None:
