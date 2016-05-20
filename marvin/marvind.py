@@ -78,7 +78,7 @@ class SchedulingClient:
             socket = context.socket(zmq.REQ)
             socket.connect("ipc:///tmp/sysevent")
             socket.send("{\"EventType\": \"%s\"}" % (eventType,))
-            socket.close(5) 
+            socket.close(5)
         except Exception, ex:
             pass
 
@@ -128,7 +128,7 @@ class SchedulingClient:
 
         id   = str(sched['id'])
 
-        starthook = self.starthook + " " + id 
+        starthook = self.starthook + " " + id
         stophook = self.stophook + " " + id
 
         timestamp = sched['start']
@@ -149,7 +149,7 @@ class SchedulingClient:
             stdout=PIPE,
             stdin=PIPE)
         output, serr = pro.communicate()
-        print output 
+        print output
         print serr
         if pro.returncode == 0:
             self.set_status(id, "deployed")
@@ -158,14 +158,14 @@ class SchedulingClient:
             return
 
         now  = int(time.time())
-        if timestamp > now + 60:   
+        if timestamp > now + 60:
             timestring = datetime.fromtimestamp(
                 timestamp).strftime(
                     AT_TIME_FORMAT)  # we are losing the seconds
             log.debug("Trying to set at using %s" % timestring)
             pro = Popen(["at", timestring], stdout=PIPE, stdin=PIPE)
             output, serr = pro.communicate(input=starthook + "\n")
-            print output 
+            print output
             print serr
             if pro.returncode != 0:
                 log.warning(
@@ -174,13 +174,12 @@ class SchedulingClient:
                 self.set_status(id, "failed")
                 # TODO: handle tasks that failed scheduling
         else:
-            # if the task has already started, run it immediately 
             log.warning(
                 "Task %s has a past start time. Running %s" %
                 (id, starthook))
-            pro = Popen([self.starthook, id, "restarted"], stdout=PIPE, stdin=PIPE)
+            pro = Popen([self.starthook, id, "started"], stdout=PIPE, stdin=PIPE)
             output, serr = pro.communicate()
-            print output 
+            print output
             print serr
             if pro.returncode != 0:
                 log.warning(
@@ -195,7 +194,7 @@ class SchedulingClient:
         log.debug("Trying to set at using %s" % timestring)
         pro = Popen(["at", timestring], stdout=PIPE, stdin=PIPE)
         output, serr = pro.communicate(input=stophook + "\n")
-        print output 
+        print output
         print serr
         if pro.returncode != 0:
             log.error("Failed to set stop hook for task %i" % stophook)
@@ -226,7 +225,7 @@ class SchedulingClient:
                     verify=False)
                 if result.status_code != 200:
                     log.debug("Setting status %s of task %s failed: %s" % \
-                              (str(status), status['schedid'], result.text)) 
+                              (str(status), status['schedid'], result.text))
                 else:
                     self.status_queue.pop()
         except Exception, ex:
@@ -311,7 +310,7 @@ class SchedulingClient:
                     fd.close()
                     try:
                         os.kill(pid, 0)
-                    except OSError as err: 
+                    except OSError as err:
                         if err.errno == errno.ESRCH: # PID does no longer exist
                             self.set_status(schedid, 'finished')
                             unlink("%s/%s.pid" % (self.statdir, schedid))
@@ -336,7 +335,7 @@ class SchedulingClient:
                         "Fetching experiment %s did not return a task "
                         "definition, but %s" % (expid, task))
 
-        # FINALLY read and post task status from *.status 
+        # FINALLY read and post task status from *.status
         try:
             statfiles = glob(self.statdir + "/*.status")
             for f in statfiles:
@@ -348,7 +347,7 @@ class SchedulingClient:
                 unlink(f)
         except Exception,ex:
 	    log.error("Error reading or sending experiment status. %s" % str(ex))
-            
+
 
 
     def start(self):
