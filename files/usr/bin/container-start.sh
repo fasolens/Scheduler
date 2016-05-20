@@ -66,8 +66,8 @@ if [ -z "$MONROE_NOOP" ]; then
     exit ERROR_NETWORK_CONTEXT_NOT_FOUND;
 fi
 
-docker run -d \
 #       --net=container:$MONROE_NOOP \
+docker run -d \
        --net=host \
        --cap-add NET_ADMIN \
        --cap-add NET_RAW \
