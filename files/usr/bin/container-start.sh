@@ -72,6 +72,7 @@ docker run -d \
        --cap-add NET_ADMIN \
        --cap-add NET_RAW \
        -v $BASEDIR/$SCHEDID.conf:/monroe/config:ro \
+       -v /etc/nodeid:/nodeid:ro \
        $MOUNT_DISK \
        $CONTAINER
 
