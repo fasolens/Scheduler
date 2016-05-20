@@ -18,10 +18,10 @@ if [ -f $BASEDIR/$SCHEDID.conf ]; then
   QUOTA_DISK=$(echo $CONFIG | jq -r .storage);
   CONTAINER_URL=$(echo $CONFIG | jq -r .script);
   IS_INTERNAL=$(echo $CONFIG | jq -r '.internal // empty');
-  BASEDIR=$(echo $CONFIG | jq -r '.basedir // empty');
+  BDEXT=$(echo $CONFIG | jq -r '.basedir // empty');
 fi
 if [ ! -z "$IS_INTERNAL" ]; then
-  BASEDIR=/experiments/monroe${BASEDIR}
+  BASEDIR=/experiments/monroe${BDEXT}
 fi
 mkdir -p $BASEDIR
 

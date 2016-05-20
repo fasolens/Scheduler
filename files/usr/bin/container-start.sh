@@ -11,10 +11,10 @@ mkdir -p $BASEDIR
 if [ -f $BASEDIR/$SCHEDID.conf ]; then
   CONFIG=$(cat $BASEDIR/$SCHEDID.conf);
   IS_INTERNAL=$(echo $CONFIG | jq -r '.internal // empty');
-  BASEDIR=$(echo $CONFIG | jq -r '.basedir // empty');
+  BDEXT=$(echo $CONFIG | jq -r '.basedir // empty');
 fi
 if [ ! -z "$IS_INTERNAL" ]; then
-  BASEDIR=/experiments/monroe${BASEDIR}
+  BASEDIR=/experiments/monroe${BDEXT}
   mkdir -p $BASEDIR
   echo $CONFIG > $BASEDIR/$SCHEDID.conf
 fi
