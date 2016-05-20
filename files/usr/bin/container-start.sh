@@ -15,8 +15,9 @@ if [ -f $BASEDIR/$SCHEDID.conf ]; then
 fi
 if [ ! -z "$IS_INTERNAL" ]; then
   BASEDIR=/experiments/monroe${BASEDIR}
+  mkdir -p $BASEDIR
+  echo $CONFIG > $BASEDIR/$SCHEDID.conf
 fi
-mkdir -p $BASEDIR
 
 NOERROR_CONTAINER_IS_RUNNING=0
 
