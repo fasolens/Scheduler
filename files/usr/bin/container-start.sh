@@ -45,7 +45,7 @@ GUID="${IMAGEID}.${SCHEDID}.${NODEID}.${COUNT}"
 
 # replace guid in the configuration
 
-CONFIG=$(echo $CONFIG | jq '.guid="'$GUID'"')
+CONFIG=$(echo $CONFIG | jq '.guid="'$GUID'"|.nodeid="'$NODEID'"')
 echo $CONFIG > $BASEDIR/$SCHEDID.conf
 
 ### START THE CONTAINER ###############################################
