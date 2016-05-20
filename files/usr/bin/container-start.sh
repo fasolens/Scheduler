@@ -13,7 +13,7 @@ if [ -f $BASEDIR/$SCHEDID.conf ]; then
   IS_INTERNAL=$(echo $CONFIG | jq -r .internal);
   BASEDIR=$(echo $CONFIG | jq -r .basedir);
 fi
-if [ ! -z "$IS_INTERNAL"]; then
+if [ ! -z "$IS_INTERNAL" ]; then
   BASEDIR=/experiments/monroe${BASEDIR}
 fi
 mkdir -p $BASEDIR
