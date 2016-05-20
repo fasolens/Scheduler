@@ -38,7 +38,8 @@ else:
     nope, cfile = sys.argv
 
 config = configuration.select('marvind', cfile)
-logging.basicConfig(filename=config['log']['file'],
+logging.basicConfig(
+#logging.basicConfig(filename=config['log']['file'],
                     level=config['log']['level'])
 log = logging.getLogger('marvind')
 
@@ -91,13 +92,13 @@ class SchedulingClient:
         to get one, because of connectivity issues), but we can resume any task
         that has configured a stop hook and is not finished.
         """
-        self.jobs = self.read_jobs()
+        jobs = self.read_jobs()
         relaunch = []
-        for command in self.jobs.itervalues():
+        for command in jobs.itervalues():
             if " " in command:
                 hook, taskid = command.split(" ")
                 if hook == self.stophook:
-                    if self.starthook + " " + taskid in self.jobs.values():
+                    if self.starthook + " " + taskid in jobs.values():
                         continue
                     log.debug(
                         "During marvind startup, task %s had a stop hook, "
@@ -244,7 +245,6 @@ class SchedulingClient:
         for job in atq:
             atid = int(job.split("\t")[0])
             if atid not in jobs:
-                log.debug("reading definition of %s from local atq" % atid)
                 pro = Popen(["at", "-c", str(atid)], stdout=PIPE)
                 output = pro.communicate()[0]
                 if pro.returncode == 1:
@@ -256,7 +256,6 @@ class SchedulingClient:
                     jobs[atid] = command
                     log.debug("definition of task %s is %s" % (atid, command))
 
-        self.jobs = jobs
         return jobs
 
     def update_schedule(self, data):
@@ -265,9 +264,10 @@ class SchedulingClient:
         tasks = [x['id'] for x in schedule]
 
         # FIRST update scheduled tasks from atq
-        self.jobs = self.read_jobs()
+        jobs = self.read_jobs()
+        known = jobs.values()
 
-        for atid, command in self.jobs.iteritems():
+        for atid, command in jobs.iteritems():
             taskid = int(command.split(" ")[1]) if " " in command else ""
             if taskid not in tasks and "stop" not in command:
                 #FIXME: actually run stop hook immediately if the task is deleted
@@ -276,7 +276,6 @@ class SchedulingClient:
                     (atid, taskid, json.dumps(tasks), command))
                 pro = Popen(["atrm", str(atid)], stdout=PIPE)
                 pro.communicate()
-                del self.jobs[atid]
 
         # SECOND fetch all remote tasks NOT in atq
         for sched in schedule:
@@ -291,10 +290,8 @@ class SchedulingClient:
             starthook = self.starthook + " " + schedid
             stophook = self.stophook + " " + schedid
 
-            known = self.jobs.values()
-            log.debug("known tasks:\n" + json.dumps(self.jobs))
             if starthook in known:
-                # task is known and scheduled
+                log.debug("task %s is known and scheduled." % schedid)
                 if not stophook in known:
                     # FIXME: we'll actually have to check if the wrapup task exists,
                     #       in case that the task was started already
@@ -302,8 +299,7 @@ class SchedulingClient:
                     pass
                 continue
             elif stophook in known:
-                # task is known and started
-                # TODO: check whether the task is running.
+                log.debug("task %s is known and started." % schedid)
                 try:
                     fd = open("%s/%s.pid" % (self.statdir, schedid))
                     pid = int(fd.read().strip())
