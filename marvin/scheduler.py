@@ -752,6 +752,8 @@ SELECT DISTINCT * FROM (
             'traffic',
             'storage',
             'interfaces',
+            'internal',
+            'basedir',
             'restart']
         scheduling_keys = [
             'traffic',
