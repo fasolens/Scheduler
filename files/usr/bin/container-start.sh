@@ -60,7 +60,8 @@ if [ -z "$MONROE_NOOP" ]; then
 fi
 
 docker run -d \
-       --net=container:$MONROE_NOOP \
+#       --net=container:$MONROE_NOOP \
+       --net=host \
        --cap-add NET_ADMIN \
        --cap-add NET_RAW \
        -v $BASEDIR/$SCHEDID.conf:/monroe/config:ro \
