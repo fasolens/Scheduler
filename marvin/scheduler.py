@@ -449,7 +449,7 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
             result = c.fetchone()
             if not result:
                 return False, "Could not find scheduling ID"
-            oldstat = result.get('status')
+            oldstat = result[0]
             if oldstat not in TASK_FINAL_CODES:
                 c.execute(
                     "UPDATE schedule SET status = ? WHERE id = ?",
