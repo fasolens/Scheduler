@@ -6,6 +6,14 @@ STATUS=$2
 CONTAINER=monroe-$SCHEDID
 
 BASEDIR=/experiments/user
+if [ -f $BASEDIR/$SCHEDID.conf ]; then
+  CONFIG=$(cat $BASEDIR/$SCHEDID.conf);
+  IS_INTERNAL=$(echo $CONFIG | jq -r .internal);
+  BASEDIR=$(echo $CONFIG | jq -r .basedir);
+fi
+if [ ! -z "$IS_INTERNAL"]; then
+  BASEDIR=/experiments/monroe${BASEDIR}
+fi
 
 CID=$( docker ps | grep $CONTAINER | awk '{print $1}' )
 if [ -z "$CID" ]; then
@@ -39,5 +47,5 @@ umount $BASEDIR/$SCHEDID            2>/dev/null  || echo 'Directory is no longer
 rmdir  $BASEDIR/$SCHEDID            2>/dev/null
 rm     $BASEDIR/${SCHEDID}.disk     2>/dev/null
 rm     $BASEDIR/${SCHEDID}.counter  2>/dev/null
-rm     $BASEDIR/${SCHEDID}.conf     2>/dev/null
+rm     $BASEDIR/${SCHEDID}.conf     2>/dev/null # FIXME: use original basedir
 rm     $BASEDIR/${SCHEDID}.pid      2>/dev/null

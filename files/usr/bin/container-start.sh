@@ -10,7 +10,13 @@ mkdir -p $BASEDIR
 
 if [ -f $BASEDIR/$SCHEDID.conf ]; then
   CONFIG=$(cat $BASEDIR/$SCHEDID.conf);
+  IS_INTERNAL=$(echo $CONFIG | jq -r .internal);
+  BASEDIR=$(echo $CONFIG | jq -r .basedir);
 fi
+if [ ! -z "$IS_INTERNAL"]; then
+  BASEDIR=/experiments/monroe${BASEDIR}
+fi
+mkdir -p $BASEDIR
 
 NOERROR_CONTAINER_IS_RUNNING=0
 
@@ -66,7 +72,7 @@ docker run -d \
        --cap-add NET_RAW \
        -v $BASEDIR/$SCHEDID.conf:/monroe/config:ro \
        $MOUNT_DISK \
-       $CONTAINER 
+       $CONTAINER
 
 # CID: the runtime container ID
 CID=$(docker ps --no-trunc | grep $CONTAINER | awk '{print $1}' | head -n 1)

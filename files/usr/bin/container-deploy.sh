@@ -5,6 +5,7 @@ SCHEDID=$1
 CONTAINER_URL=$2 # may be empty, just for convenience of starting manually.
 
 BASEDIR=/experiments/user
+mkdir -p $BASEDIR
 
 ERROR_CONTAINER_NOT_FOUND=100
 ERROR_INSUFFICIENT_DISK_SPACE=101
@@ -16,7 +17,13 @@ if [ -f $BASEDIR/$SCHEDID.conf ]; then
   CONFIG=$(cat $BASEDIR/$1.conf);
   QUOTA_DISK=$(echo $CONFIG | jq -r .storage);
   CONTAINER_URL=$(echo $CONFIG | jq -r .script);
+  IS_INTERNAL=$(echo $CONFIG | jq -r .internal);
 fi
+if [ ! -z "$IS_INTERNAL"]; then
+  BASEDIR=/experiments/monroe
+fi
+mkdir -p $BASEDIR
+
 if [ -z "$QUOTA_DISK" ]; then
   QUOTA_DISK=0; #KB!
 else
