@@ -6,6 +6,7 @@ STATUS=$2
 CONTAINER=monroe-$SCHEDID
 
 BASEDIR=/experiments/user
+STATUSDIR=$BASEDIR
 if [ -f $BASEDIR/$SCHEDID.conf ]; then
   CONFIG=$(cat $BASEDIR/$SCHEDID.conf);
   IS_INTERNAL=$(echo $CONFIG | jq -r '.internal // empty');
@@ -24,9 +25,9 @@ else
 fi
 
 if [ -z "$STATUS" ]; then
-  echo 'stopped' > $BASEDIR/$SCHEDID.status;
+  echo 'stopped' > $STATUSDIR/$SCHEDID.status;
 else
-  echo $STATUS > $BASEDIR/$SCHEDID.status;
+  echo $STATUS > $STATUSDIR/$SCHEDID.status;
 fi
 
 REF=$( docker images | grep $CONTAINER | awk '{print $3}' )

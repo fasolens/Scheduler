@@ -6,6 +6,7 @@ STATUS=$2
 CONTAINER=monroe-$SCHEDID
 
 BASEDIR=/experiments/user
+STATUSDIR=$BASEDIR
 mkdir -p $BASEDIR
 
 if [ -f $BASEDIR/$SCHEDID.conf ]; then
@@ -80,7 +81,7 @@ docker run -d \
 CID=$(docker ps --no-trunc | grep $CONTAINER | awk '{print $1}' | head -n 1)
 
 if [ -z "$CID" ]; then
-    echo 'failed' > $BASEDIR/$SCHEDID.status
+    echo 'failed' > $STATUSDIR/$SCHEDID.status
     exit $ERROR_CONTAINER_DID_NOT_START;
 fi
 
@@ -90,13 +91,13 @@ PID=$(docker inspect -f '{{.State.Pid}}' $CID)
 if [ ! -z $PID ]; then
   echo "Started docker process $CID $PID."
 else
-  echo 'failed' > $BASEDIR/$SCHEDID.status
+  echo 'failed' > $STATUSDIR/$SCHEDID.status
   exit $ERROR_CONTAINER_DID_NOT_START;
 fi
 
 echo $PID > $BASEDIR/$SCHEDID.pid
 if [ -z "$STATUS" ]; then
-  echo 'started' > $BASEDIR/$SCHEDID.status
+  echo 'started' > $STATUSDIR/$SCHEDID.status
 else
-  echo $STATUS > $BASEDIR/$SCHEDID.status
+  echo $STATUS > $STATUSDIR/$SCHEDID.status
 fi
