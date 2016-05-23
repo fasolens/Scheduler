@@ -155,6 +155,8 @@ class SchedulingClient:
         if pro.returncode == 0:
             self.set_status(id, "deployed")
         else:
+            if pro.returncode == 100:  # CONTAINER_DOES_NOT_EXIST
+                self.set_status(id, "failed")
             # TODO detect acceptable failure codes (delayed deployment)
             return
 
