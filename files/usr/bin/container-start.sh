@@ -67,9 +67,8 @@ if [ -z "$MONROE_NOOP" ]; then
     exit ERROR_NETWORK_CONTEXT_NOT_FOUND;
 fi
 
-#       --net=container:$MONROE_NOOP \
 docker run -d \
-       --net=host \
+       --net=container:$MONROE_NOOP \
        --cap-add NET_ADMIN \
        --cap-add NET_RAW \
        -v $BASEDIR/$SCHEDID.conf:/monroe/config:ro \
