@@ -122,6 +122,14 @@ class SchedulerTestCase(unittest.TestCase):
                  'until': now + 100000000000
                  })
         self.assertLess(r[2]['stop'], now + 100000000000)
+        # interleaving recurrence
+        r = self.sch.allocate(1,'test', now + 2500, 500, 1, 'status:test', '...',
+                {'recurrence':'simple',
+                 'period': 3600,
+                 'until': now + 2500 + 3600 * 2 + 500
+                })
+        self.assertEqual(r[2]['nodecount'], 1)
+        self.assertEqual(r[2]['intervals'], 3)
 
     def test_12_find_slot(self):
         r = self.sch.find_slot(1)
@@ -150,7 +158,7 @@ class SchedulerTestCase(unittest.TestCase):
         self.assertEqual(r[2]['required'], 600)
 
     def test_21_delete_experiment(self):
-        r = self.sch.delete_experiment(3)
+        r = self.sch.delete_experiment(99)
         self.assertEqual(r[0],0)
         r = self.sch.delete_experiment(1)
         self.assertEqual(r[0],1)
