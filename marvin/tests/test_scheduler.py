@@ -115,6 +115,7 @@ class SchedulerTestCase(unittest.TestCase):
         self.assertGreater(t[1]['stop'], t[1]['start'])
         self.assertEqual(t[0]['stop'] - t[0]['start'],
                          t[1]['stop'] - t[1]['start'],)
+
         # truncating until
         r = self.sch.allocate(1,'test', now + 1500, 500, 1, 'status:test', '...',
                 {'recurrence':'simple',
@@ -122,6 +123,7 @@ class SchedulerTestCase(unittest.TestCase):
                  'until': now + 100000000000
                  })
         self.assertLess(r[2]['stop'], now + 100000000000)
+
         # interleaving recurrence
         r = self.sch.allocate(1,'test', now + 2500, 500, 1, 'status:test', '...',
                 {'recurrence':'simple',
@@ -140,6 +142,12 @@ class SchedulerTestCase(unittest.TestCase):
                                nodetypes='status:test')
         self.assertIsNotNone(r[0])
         self.assertEqual(r[0][0]['nodecount'], 1)
+
+        # actually allocate the suggested slot
+        print r
+        r = self.sch.allocate(1,'test', r[0][0]['start'], 500, 1, 'status:test', '...', {})
+        self.assertEqual(r[2]['nodecount'], 1)
+
         r = self.sch.find_slot(1, duration=500, nodes=['500','600'])
         self.assertIsNone(r[0])
 
