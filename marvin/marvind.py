@@ -226,7 +226,7 @@ class SchedulingClient:
                     data=status,
                     cert=self.cert,
                     verify=False)
-                if result.status_code != 200:
+                if result.status_code != 200 and not "cannot be reset" in result.text:
                     log.debug("Setting status %s of task %s failed: %s" % \
                               (str(status), status['schedid'], result.text))
                 else:
