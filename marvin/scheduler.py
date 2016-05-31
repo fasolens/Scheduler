@@ -399,7 +399,7 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
             return None
 
     def get_schedule(self, schedid=None, expid=None, nodeid=None,
-                     userid=None, past=False, start=0, stop=0):
+                     userid=None, past=False, start=0, stop=0, limit=0):
         """Return scheduled jobs.
 
         Keywords arguments:
@@ -440,7 +440,10 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         for x in tasks:
             x['deployment_options'] = json.loads(
                 x.get('deployment_options', '{}'))
-        return tasks
+        if limit > 0:
+            return tasks[:limit]
+        else:
+            return tasks
 
     def set_status(self, schedid, status):
         c = self.db().cursor()

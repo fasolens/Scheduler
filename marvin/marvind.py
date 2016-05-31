@@ -47,6 +47,8 @@ AT_TIME_FORMAT = "%H:%M %Y-%m-%d"
 
 SYSEVENT_SCHEDULING_STARTED = "Scheduling.Started"
 
+PREFETCH_LIMIT = 3
+
 class SchedulingClient:
     running = threading.Event()
     jobs = {}
@@ -262,7 +264,7 @@ class SchedulingClient:
 
     def update_schedule(self, data):
         log.debug("update_schedule (%s)" % json.dumps(data))
-        schedule = data[:3] # download the first three tasks only
+        schedule = data[:PREFETCH_LIMIT] # download the first three tasks only
         tasks = [x['id'] for x in schedule]
 
         # FIRST update scheduled tasks from atq
@@ -376,7 +378,7 @@ class SchedulingClient:
                         'rest-server'] + "/resources/" + str(self.ID)
                     result = requests.put(
                         heartbeat,
-                        data=None,
+                        data={"limit": PREFETCH_LIMIT},
                         cert=self.cert,
                         verify=False)
                     if result.status_code == 200:
