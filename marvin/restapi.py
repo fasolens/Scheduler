@@ -268,22 +268,23 @@ class Experiment:
                          "(required: %s | optional: %s, provided: %s)."
                          % (str(required), str(optional), str(params.keys())))
 
-    def DELETE(self, expid):
+    def DELETE(self, path):
         uid, role, name = rest_api.get_user(web.ctx)
         if role not in [scheduler.ROLE_USER, scheduler.ROLE_ADMIN]:
             web.ctx.status = '401 Unauthorized'
             return error("You'd have to be a user or admin to do that")
 
-        if expid in ["", "/"]:
+        if path in ["", "/"]:
             web.ctx.status = '400 Bad Request'
             return error("Taskid missing.")
+        expid=path[1:]
         experiments = rest_api.scheduler.get_experiments(expid=expid)
         if experiments[0]['ownerid'] != uid and role != scheduler.ROLE_USER:
             web.ctx.status = '401 Unauthorized'
             return error("Only admins and user %i can do this" % uid)
         else:
             result, message, extra = \
-                rest_api.scheduler.delete_experiment(expid[1:])
+                rest_api.scheduler.delete_experiment(expid)
             log.debug("Delete result: %s rows deleted" % result)
             if result > 0:
                 return error(message, extra=extra)
