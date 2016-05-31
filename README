@@ -83,7 +83,22 @@ only for nodes (role: node)
 
   * GET resources/#/schedules
   * PUT resources/#       [send heartbeat]
-  * PUT schedules/#        status=deployed|started|finished|failed
+  * PUT schedules/#        status=...
+
+Valid status codes are:
+
+  * defined    - experiment is created in the scheduler
+  * deployed   - node has deployed the experiment, scheduled a start time
+  * started    - node has successfully started the experiment
+  * restarted  - node has restarted the experiment after a node failure
+
+These status codes are final and cannot be overridden:
+
+  * stopped    - experiment stopped by scheduler 
+  * finished   - experiment completed, exited before being stopped
+  * failed     - scheduling process failed
+  * canceled   - user deleted experiment, task not deployed (but some were)
+  * aborted    - user deleted experiment, task had been deployed
 
 ## Experiment and scheduling parameters:
 
@@ -103,7 +118,7 @@ The following parameters are used to schedule an experiment:
 
 These are defined as scheduling options, interpreted by the scheduling server:
 
-* options   - (optional) additional scheduling options. (should we flatten the options?)
+* options   - (optional) additional scheduling options. 
     * nodes         - a specific list of node ids to select for scheduling
     * shared        - (default 0) 1 if this is a passive measurement experiment
     * recurrence    - (default 0) 'simple' for a basic recurrence model
@@ -140,6 +155,11 @@ in order to use a web browser-based client, you also need to enable CORS headers
     add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS, PUT, DELETE' always;
     add_header 'Access-Control-Allow-Headers' 'DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type' always;
 
+    if ($request_method = 'OPTIONS') {
+        add_header 'Content-Length' 0 always;
+        return 204;
+    }
+
 To create an authority, server or client keys, follow this guide:
 http://dst.lbl.gov/~boverhof/openssl_certs.html
 
@@ -162,7 +182,7 @@ For every new task assigned:
     be run at the scheduled time.
   * A stop hook is added to the atq at the scheduled stop time.
 
-Task status (DEPLOYED, FAILED, STARTED, FINISHED) is reported back to the ctld.
+Task status is reported back to the ctld.
 
 ### Configuration
 
