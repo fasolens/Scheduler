@@ -24,6 +24,10 @@ else
   docker stop --time=10 $CID;
 fi
 
+if [ -d $BASEDIR/$SCHEDID ]; then
+  docker logs -t $CID > $BASEDIR/$SCHEDID/container.log
+fi
+
 if [ -z "$STATUS" ]; then
   echo 'stopped' > $STATUSDIR/$SCHEDID.status;
 else
@@ -42,11 +46,14 @@ docker rm $(docker ps -aq) 2>/dev/null
 # clean any untagged containers without dependencies (unused layers)
 docker rmi $(docker images -a|grep '^<none>'|awk "{print \$3}") 2>/dev/null
 
-# TODO sync outdir
+monroe-user-experiments  #rsync, if possible
 
-umount $BASEDIR/$SCHEDID            2>/dev/null  || echo 'Directory is no longer mounted.'
-rmdir  $BASEDIR/$SCHEDID            2>/dev/null
+if [ ! $(ls -A $BASEDIR/$SCHEDID/ 2>/dev/null) ]; then
+  umount $BASEDIR/$SCHEDID            2>/dev/null  || echo 'Directory is no longer mounted.'
+  rmdir  $BASEDIR/$SCHEDID            2>/dev/null
+fi
 rm     $BASEDIR/${SCHEDID}.disk     2>/dev/null
 rm     $BASEDIR/${SCHEDID}.counter  2>/dev/null
-rm     $BASEDIR/${SCHEDID}.conf     2>/dev/null # FIXME: use original basedir
+rm     $BASEDIR/${SCHEDID}.conf     2>/dev/null 
+rm     $STATUSDIR/${SCHEDID}.conf   2>/dev/null 
 rm     $BASEDIR/${SCHEDID}.pid      2>/dev/null
