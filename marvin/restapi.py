@@ -116,7 +116,7 @@ class Resource:
                 return error("Wrong user to update this status. (%s)" % name)
             now = int(time.time())
             rest_api.scheduler.set_heartbeat(nodeid, now)
-            limit = data.get("limit",0)
+            limit = int(data.get("limit",0))
             data = rest_api.scheduler.get_schedule(nodeid=nodeid, limit=limit)
             return dumps(data)
         else:
