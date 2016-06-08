@@ -16,12 +16,12 @@ if [ ! -z "$IS_INTERNAL" ]; then
   BASEDIR=/experiments/monroe${BDEXT}
 fi
 
-CID=$( docker ps | grep $CONTAINER | awk '{print $1}' )
-if [ -z "$CID" ]; then
-  echo "Container is no longer running.";
-else
-  # Stop the container if it is running.
+CID=$( docker ps -a | grep $CONTAINER | awk '{print $1}' )
+
+if [ $(docker inspect -f "{{.State.Running}}" $CID 2>/dev/null) ]; then
   docker stop --time=10 $CID;
+else
+  echo "Container is no longer running.";
 fi
 
 if [ -d $BASEDIR/$SCHEDID ]; then
