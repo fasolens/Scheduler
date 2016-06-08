@@ -38,7 +38,7 @@ echo $COUNT > $BASEDIR/${SCHEDID}.counter
 NODEID=$(</etc/nodeid)
 IMAGEID=$(docker images -q --no-trunc monroe-$SCHEDID)
 
-if [ -z "$IMAGEID"]; then
+if [ -z "$IMAGEID" ]; then
     exit $ERROR_IMAGE_NOT_FOUND;
 fi
 
