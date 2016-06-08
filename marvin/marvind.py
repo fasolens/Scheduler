@@ -15,6 +15,7 @@ import sys
 from glob import glob
 from os import unlink
 import logging
+from logging.handlers import WatchedFileHandler
 import configuration
 
 import os
@@ -32,16 +33,17 @@ requests.packages.urllib3.disable_warnings()
 
 if len(sys.argv) < 2:
     cfile = "/etc/marvind.conf"
-    print "usage: marvind.py [configuration]"
     print "Using default configuration at %s" % cfile
 else:
     nope, cfile = sys.argv
 
 config = configuration.select('marvind', cfile)
-#logging.basicConfig(
-logging.basicConfig(filename=config['log']['file'],
-                    level=config['log']['level'])
+
 log = logging.getLogger('marvind')
+log.addHandler(WatchedFileHandler(config['log']['file']))
+log.setLevel(config['log']['level'])
+
+print "Logging to %s" % (config['log']['file'],)
 
 AT_TIME_FORMAT = "%H:%M %Y-%m-%d"
 
