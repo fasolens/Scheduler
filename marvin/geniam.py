@@ -8,14 +8,9 @@ All rights reserved.
 Allows to schedule tasks through a GENI AMv3 API XML-RPC interface.
 """
 
-# import hashlib
-# import hmac
 import logging
-# import requests
+from logging.handlers import WatchedFileHandler
 import simplejson as json
-# import sys
-# import time
-# import threading
 import traceback
 import configuration
 
@@ -42,10 +37,9 @@ NSMAP = {
   "xsi": XSI_NS
 }
 
-logging.basicConfig(
-    filename=config['log']['file'],
-    level=config['log']['level'])
 log = logging.getLogger('GENI AM')
+log.addHandler(WatchedFileHandler(config['log']['file']))
+log.setLevel(config['log']['level'])
 
 
 class Handler(XRH):

@@ -9,6 +9,7 @@ Allows to schedule tasks through a REST API interface.
 """
 
 import logging
+from logging.handlers import WatchedFileHandler
 import configuration
 
 import simplejson as json
@@ -18,10 +19,10 @@ import scheduler
 
 config = configuration.select('marvinctld')
 
-logging.basicConfig(
-    filename=config['log']['file'],
-    level=config['log']['level'])
 log = logging.getLogger('REST API')
+log.addHandler(WatchedFileHandler(config['log']['file']))
+log.setLevel(config['log']['level'])
+
 
 API_VERSION = "1.0"
 # NOTE: major versions will be reflected in the URL

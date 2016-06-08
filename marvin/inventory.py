@@ -5,14 +5,14 @@ import hashlib
 import requests
 import simplejson as json
 import logging
+from logging.handlers import WatchedFileHandler
 import time
 import configuration
 
 config = configuration.select('marvinctld')
-logging.basicConfig(
-    level=config['log']['level'],
-    filename=config['log']['file'])
 log = logging.getLogger('Inventory')
+log.addHandler(WatchedFileHandler(config['log']['file']))
+log.setLevel(config['log']['level'])
 
 
 def inventory_api(route, data=None):

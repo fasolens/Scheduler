@@ -13,6 +13,7 @@ Manages a task schedule for MONROE nodes.
 
 import sys
 import logging
+from logging.handlers import WatchedFileHandler
 import configuration
 import threading
 import time
@@ -23,11 +24,9 @@ else:
     cfile = sys.argv[1]
 config = configuration.select('marvinctld', cfile)
 
-# logging.basicConfig(level=config['log']['level'])
-logging.basicConfig(
-#    filename=config['log']['file'],
-    level=config['log']['level'])
 log = logging.getLogger('marvinctld')
+log.addHandler(WatchedFileHandler(config['log']['file']))
+log.setLevel(config['log']['level'])
 
 from geniam import FederationAM
 from restapi import RestAPI

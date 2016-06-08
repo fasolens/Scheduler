@@ -4,6 +4,7 @@ import sys
 import sqlite3 as db
 import time
 import logging
+from logging.handlers import WatchedFileHandler
 from thread import get_ident
 import threading
 from inventory import inventory_api
@@ -14,10 +15,11 @@ import datetime
 
 config = configuration.select('marvinctld')
 
-logging.basicConfig(
-    filename=config['log']['file'],
-    level=config['log']['level'])
 log = logging.getLogger('Scheduler')
+log.addHandler(WatchedFileHandler(config['log']['file']))
+log.setLevel(config['log']['level'])
+
+
 
 log.debug("Configuration loaded: " + str(config))
 
