@@ -25,7 +25,7 @@ else
 fi
 
 if [ -d $BASEDIR/$SCHEDID ]; then
-  docker logs -t $CID > $BASEDIR/$SCHEDID/container.log
+  docker logs -t $CID &> $BASEDIR/$SCHEDID/container.log
 fi
 
 if [ -z "$STATUS" ]; then
