@@ -113,7 +113,7 @@ The following parameters are used to schedule an experiment:
                 Valid queries include a tag and value, e.g. type:testing
                 Valid tags are [model, project, status, type]
                 Supports the operators OR(|), NOT(-) and AND(,) in this strict order of precedence.
-                EXAMPLE: type:testing,country:spain,-model:apu2d
+                EXAMPLE: type:testing,country:es,-model:apu2d
   * script    - the experiment to execute, currently in the form of a docker pull URL
 
 These are defined as scheduling options, interpreted by the scheduling server:
