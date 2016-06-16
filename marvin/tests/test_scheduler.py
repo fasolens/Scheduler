@@ -28,6 +28,9 @@ class SchedulerTestCase(unittest.TestCase):
             c = self.sch.db().cursor()
             c.execute("INSERT OR IGNORE INTO nodes VALUES (?, ?, ?, ?)",
                   ('1', 'test-node', 'active', 0))
+            c.execute("INSERT OR REPLACE INTO node_interface "
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  ('1', '', '', '', '', 0, 0, 0, 0, 0))
             self.sch.db().commit()
             self.sch.set_node_types(1, 'status:test')
 

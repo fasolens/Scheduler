@@ -181,7 +181,7 @@ class Scheduler:
         if not set(["nodes", "node_type", "node_interface", "owners",
                     "experiments", "schedule",
                     "quota_owner_time", "quota_owner_data",
-                    "quota_owner_storage", "quota_node_operator_data",
+                    "quota_owner_storage" 
                     ]).issubset(set(tables)):
             for statement in """
 
@@ -213,12 +213,6 @@ CREATE TABLE IF NOT EXISTS quota_owner_storage (ownerid INTEGER PRIMARY KEY,
     current INTEGER NOT NULL, reset_value INTEGER NOT NULL,
     reset_date INTEGER NOT NULL, last_reset INTEGER,
     FOREIGN KEY (ownerid) REFERENCES owners(id));
-CREATE TABLE IF NOT EXISTS quota_node_operator_data (
-    nodeid INTEGER, iccid INTEGER, current INTEGER NOT NULL,
-    reset_value INTEGER NOT NULL, reset_date INTEGER NOT NULL,
-    last_reset INTEGER,
-    FOREIGN KEY (nodeid) REFERENCES nodes(id),
-    PRIMARY KEY (nodeid, iccid));
 CREATE TABLE IF NOT EXISTS experiments (id INTEGER PRIMARY KEY ASC,
     name TEXT NOT NULL, ownerid INTEGER NOT NULL, type TEXT NOT NULL,
     script TEXT NOT NULL, start INTEGER NOT NULL, stop INTEGER NOT NULL,
@@ -562,23 +556,26 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
 
         preselection = ""
         if nodes is not None and len(nodes) > 0:
-            preselection = " AND id IN ('" + "', '".join(nodes) + "') \n"
+            preselection = " AND n.id IN ('" + "', '".join(nodes) + "') \n"
 
-        query = "\nSELECT DISTINCT id FROM nodes WHERE status = ? \n"
+        query = "\nSELECT DISTINCT n.id AS id, MIN(i.quota_value) AS min_quota"\
+                "  FROM nodes n, node_interface i \n"\
+                "  WHERE n.status = ? AND n.id = i.nodeid \n"
         query += preselection
         type_require = [x[0].split(":") for x in type_require]
         type_reject = [x[0].split(":") for x in type_reject]
         for type_and in type_require:
-            query += "  AND id IN (SELECT nodeid FROM node_type " \
+            query += "  AND n.id IN (SELECT nodeid FROM node_type " \
                      "  WHERE tag = ? AND type = ?)"
         for type_and in type_reject:
-            query += "  AND id NOT IN (SELECT nodeid FROM node_type " \
+            query += "  AND n.id NOT IN (SELECT nodeid FROM node_type " \
                      "  WHERE tag = ? AND type = ?)"
         query += """
-AND id NOT IN (
+AND n.id NOT IN (
     SELECT DISTINCT nodeid FROM schedule s
     WHERE shared = 0 AND NOT ((s.stop + ? < ?) OR (s.start - ? > ?))
 )
+ORDER BY min_quota DESC
                  """
         c.execute(query, [NODE_ACTIVE] +
                   list(chain.from_iterable(type_require)) +
@@ -586,7 +583,7 @@ AND id NOT IN (
                   [POLICY_TASK_PADDING, start, POLICY_TASK_PADDING, stop])
 
         noderows = c.fetchall()
-        nodes = [dict(x) for x in noderows]
+        nodes = [dict(x) for x in noderows if x[1] is not None]
         return nodes
 
     def parse_node_types(self, nodetypes=""):
