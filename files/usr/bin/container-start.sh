@@ -54,6 +54,9 @@ echo $CONFIG > $BASEDIR/$SCHEDID.conf
 if [ -d $BASEDIR/$SCHEDID ]; then
     MOUNT_DISK="-v $BASEDIR/$SCHEDID:/monroe/results -v $BASEDIR/$SCHEDID:/outdir"
 fi
+if [ -q /experiments/monroe/tstat ]; then
+    TSTAT_DISK="-v $/experiments/monroe/tstat:/monroe/tstat:ro"
+fi
 
 # check that this container is not running yet
 if [ ! -z "$(docker ps | grep monroe-$SCHEDID)" ]; then
@@ -74,6 +77,7 @@ docker run -d \
        -v $BASEDIR/$SCHEDID.conf:/monroe/config:ro \
        -v /etc/nodeid:/nodeid:ro \
        $MOUNT_DISK \
+       $TSTAT_DISK \
        $CONTAINER
 
 # CID: the runtime container ID
