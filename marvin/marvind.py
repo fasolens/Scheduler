@@ -143,6 +143,8 @@ class SchedulingClient:
 
         # run deploy hook, which should be safe to be re-run
         print [self.deployhook, id, task['script'], deploy_opts]
+        if not os.path.exists(self.confdir):
+            os.makedirs(self.confdir)
         fd = open("%s/%s.conf" % (self.confdir, id),'w')
         fd.write(deploy_opts)
         fd.close()
