@@ -398,6 +398,8 @@ class Backend:
         if role != scheduler.ROLE_ADMIN:
             web.ctx.status = '401 Unauthorized'
             return error("You'd have to be an admin to do that")
+        if action == "/sync":
+            rest_api.scheduler.sync_inventory()
         pass
 
 
