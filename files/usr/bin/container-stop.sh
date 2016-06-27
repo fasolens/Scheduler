@@ -7,6 +7,8 @@ CONTAINER=monroe-$SCHEDID
 
 BASEDIR=/experiments/user
 STATUSDIR=$BASEDIR
+USAGEDIR=/monroe/usage/netns
+
 if [ -f $BASEDIR/$SCHEDID.conf ]; then
   CONFIG=$(cat $BASEDIR/$SCHEDID.conf);
   IS_INTERNAL=$(echo $CONFIG | jq -r '.internal // empty');
@@ -26,6 +28,9 @@ fi
 
 if [ -d $BASEDIR/$SCHEDID ]; then
   docker logs -t $CID &> $BASEDIR/$SCHEDID/container.log
+  for i in $(ls $USAGEDIR/monroe-$SCHEDID/*|sort); do 
+    echo -e "$(basename $i)\t\t$(cat $i)" >> $BASEDIR/$SCHEDID/container.stat; 
+  done
 fi
 
 if [ -z "$STATUS" ]; then
@@ -56,4 +61,5 @@ rm     $BASEDIR/${SCHEDID}.disk     2>/dev/null
 rm     $BASEDIR/${SCHEDID}.counter  2>/dev/null
 rm     $BASEDIR/${SCHEDID}.conf     2>/dev/null 
 rm     $STATUSDIR/${SCHEDID}.conf   2>/dev/null 
+rm -r  $USAGEDIR/monroe-${SCHEDID}  2>/dev/null
 rm     $BASEDIR/${SCHEDID}.pid      2>/dev/null
