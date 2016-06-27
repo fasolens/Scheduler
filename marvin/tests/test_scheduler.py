@@ -19,6 +19,8 @@ class SchedulerTestCase(unittest.TestCase):
             configuration.select('marvinctld',
                                  preset={'inventory': {'sync': False},
                                          'database': TEMP_DB,
+                                         'repository': {
+                                                 'deployment':'server.xyz'},
                                          'log': {'level': 50,
                                                  'file': TEMP_LOG}})
 

@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 
-import sys
-import sqlite3 as db
-import time
+import configuration
+import datetime
+from inventory import inventory_api
+from itertools import chain
 import logging
 from logging.handlers import WatchedFileHandler
+import re
+import simplejson as json
+import sqlite3 as db
+import sys
 from thread import get_ident
 import threading
-from inventory import inventory_api
-import configuration
-import simplejson as json
-from itertools import chain
-import datetime
+import time
 
 config = configuration.select('marvinctld')
 
@@ -23,6 +24,8 @@ log.setLevel(config['log']['level'])
 
 log.debug("Configuration loaded: " + str(config))
 
+DEPLOYMENT_SERVER=config['repository']['deployment']
+DEPLOYMENT_RE=re.compile('^(https://)?' + re.escape(DEPLOYMENT_SERVER) + '.*')
 ERROR_INSUFFICIENT_RESOURCES = "sc1"
 ERROR_PARSING_FAILED = "sc2"
 
@@ -795,6 +798,12 @@ SELECT DISTINCT * FROM (
         if type_require is None:
             error_message = type_reject
             return None, error_message, {}
+        if DEPLOYMENT_RE.match(script) is None:
+            if ['type:deployed'] in type_require:
+                return None, "Deployed nodes can only schedule experiments " \
+                             "hosted by %s" % DEPLOYMENT_SERVER, {}
+            else:
+                type_reject.append(['type:deployed'])
 
         if start == 0:
             start = self.get_scheduling_period()[0] + 10
