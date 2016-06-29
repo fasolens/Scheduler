@@ -545,7 +545,8 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
                          for fro in xrange(start, until, period)]
             return intervals
         else:
-            return []
+            raise SchedulerException(
+                "Unsupported recurrence scheme")
 
     def get_available_nodes(self, nodes, type_require,
                             type_reject, start, stop):
