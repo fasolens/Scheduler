@@ -533,6 +533,10 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         if recurrence is None:
             return [(start, stop)]
         elif recurrence == "simple":
+            if until < start:
+                raise SchedulerException(
+                    "End of recurrence set to before start time.")
+
             delta = stop - start
             if period < delta:
                 raise SchedulerException("Recurrence period too small. "

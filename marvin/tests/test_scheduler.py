@@ -149,7 +149,6 @@ class SchedulerTestCase(unittest.TestCase):
         self.assertEqual(r[0][0]['nodecount'], 1)
 
         # actually allocate the suggested slot
-        print r
         r = self.sch.allocate(1,'test', r[0][0]['start'], 500, 1, 'status:test', '...', {})
         self.assertEqual(r[2]['nodecount'], 1)
 
