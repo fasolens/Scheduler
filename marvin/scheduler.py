@@ -812,6 +812,9 @@ SELECT DISTINCT * FROM (
 
         try:
             intervals = self.get_recurrence_intervals(start, stop, opts)
+            if len(intervals)<1:
+                return None, "Something unexpected happened "\
+                             "(no intervals generated)", {}
         except SchedulerException as ex:
             return None, ex.message, {}
         until = int(opts.get('until', 0))
