@@ -760,13 +760,12 @@ SELECT DISTINCT * FROM (
         if opts.get(u"nodes") is not None:
             preselection = opts.get("nodes").split(",")
 
-        deployment_keys = [
-            'traffic',
-            'storage',
-            'interfaces',
+        hidden_keys = [
             'internal',
             'basedir',
-            'restart']
+            'recurrence',
+            'period',
+            'until']
         scheduling_keys = [
             'traffic',
             'shared',
@@ -774,8 +773,10 @@ SELECT DISTINCT * FROM (
             'period',
             'until',
             'storage']
+        # pass (almost) all provided parameters to container
         deployment_opts = dict([(key, opts.get(key, None))
-                               for key in deployment_keys if key in opts])
+                               for key in opts
+                               if key not in hidden_keys])
         opts = dict([(key, opts.get(key, None))
                     for key in scheduling_keys if key in opts])
 
