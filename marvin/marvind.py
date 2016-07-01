@@ -139,18 +139,19 @@ class SchedulingClient:
         timestamp = sched['start']
         deploy_conf = dict(sched['deployment_options'])
         deploy_conf.update({'script': task['script']})
+        deploy_conf.update({'start': sched['start']})
+        deploy_conf.update({'stop': sched['stop']})
         deploy_opts = json.dumps(deploy_conf)
 
         # run deploy hook, which should be safe to be re-run
-        print [self.deployhook, id, task['script'], deploy_opts]
         if not os.path.exists(self.confdir):
             os.makedirs(self.confdir)
         fd = open("%s/%s.conf" % (self.confdir, id),'w')
         fd.write(deploy_opts)
         fd.close()
         log.debug(
-            "Deploying task %s: %s " %
-            (id, self.deployhook))
+            "Deploying task %s: %s\nOptions %s" %
+            (id, self.deployhook, deploy_opts))
         pro = Popen(
             [self.deployhook, id],
             stdout=PIPE,
