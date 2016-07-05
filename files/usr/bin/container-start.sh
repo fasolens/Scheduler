@@ -55,7 +55,7 @@ if [ -d $BASEDIR/$SCHEDID ]; then
     MOUNT_DISK="-v $BASEDIR/$SCHEDID:/monroe/results -v $BASEDIR/$SCHEDID:/outdir"
 fi
 if [ -d /experiments/monroe/tstat ]; then
-    TSTAT_DISK="-v $/experiments/monroe/tstat:/monroe/tstat:ro"
+    TSTAT_DISK="-v /experiments/monroe/tstat:/monroe/tstat:ro"
 fi
 
 # check that this container is not running yet
