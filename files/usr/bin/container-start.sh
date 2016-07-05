@@ -54,7 +54,7 @@ echo $CONFIG > $BASEDIR/$SCHEDID.conf
 if [ -d $BASEDIR/$SCHEDID ]; then
     MOUNT_DISK="-v $BASEDIR/$SCHEDID:/monroe/results -v $BASEDIR/$SCHEDID:/outdir"
 fi
-if [ -q /experiments/monroe/tstat ]; then
+if [ -d /experiments/monroe/tstat ]; then
     TSTAT_DISK="-v $/experiments/monroe/tstat:/monroe/tstat:ro"
 fi
 
