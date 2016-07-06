@@ -53,9 +53,15 @@ docker rmi $(docker images -a|grep '^<none>'|awk "{print \$3}") 2>/dev/null
 
 if [ ! -z "$IS_INTERNAL" ]; then
     monroe-rsync-results;
+    rm $BASEDIR/$SCHEDID/container.*    
 else
     monroe-user-experiments;  #rsync, if possible
 fi
+
+rm -r $BASEDIR/$SCHEDID/tmp*       # remove any tmp files
+rm -r $BASEDIR/$SCHEDID/*.tmp 
+rm -r $BASEDIR/$SCHEDID/lost+found # remove lost+found created by fsck
+# any other file should be rsynced by now
 
 if [ ! $(ls -A $BASEDIR/$SCHEDID/ 2>/dev/null) ]; then
   umount $BASEDIR/$SCHEDID            2>/dev/null  || echo 'Directory is no longer mounted.'
