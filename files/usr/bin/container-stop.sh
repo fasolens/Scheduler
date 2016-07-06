@@ -60,10 +60,10 @@ fi
 if [ ! $(ls -A $BASEDIR/$SCHEDID/ 2>/dev/null) ]; then
   umount $BASEDIR/$SCHEDID            2>/dev/null  || echo 'Directory is no longer mounted.'
   rmdir  $BASEDIR/$SCHEDID            2>/dev/null
+  rm     $BASEDIR/${SCHEDID}.conf     2>/dev/null 
+  rm     $STATUSDIR/${SCHEDID}.conf   2>/dev/null 
+  rm     $BASEDIR/${SCHEDID}.disk     2>/dev/null
+  rm     $BASEDIR/${SCHEDID}.counter  2>/dev/null
+  rm -r  $USAGEDIR/monroe-${SCHEDID}  2>/dev/null
 fi
-rm     $BASEDIR/${SCHEDID}.disk     2>/dev/null
-rm     $BASEDIR/${SCHEDID}.counter  2>/dev/null
-rm     $BASEDIR/${SCHEDID}.conf     2>/dev/null 
-rm     $STATUSDIR/${SCHEDID}.conf   2>/dev/null 
-rm -r  $USAGEDIR/monroe-${SCHEDID}  2>/dev/null
 rm     $BASEDIR/${SCHEDID}.pid      2>/dev/null
