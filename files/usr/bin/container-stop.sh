@@ -51,7 +51,11 @@ docker rm $(docker ps -aq) 2>/dev/null
 # clean any untagged containers without dependencies (unused layers)
 docker rmi $(docker images -a|grep '^<none>'|awk "{print \$3}") 2>/dev/null
 
-monroe-user-experiments  #rsync, if possible
+if [ ! -z "$IS_INTERNAL" ]; then
+    monroe-rsync-results;
+else
+    monroe-user-experiments;  #rsync, if possible
+fi
 
 if [ ! $(ls -A $BASEDIR/$SCHEDID/ 2>/dev/null) ]; then
   umount $BASEDIR/$SCHEDID            2>/dev/null  || echo 'Directory is no longer mounted.'
