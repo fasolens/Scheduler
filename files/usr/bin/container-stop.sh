@@ -28,8 +28,10 @@ fi
 
 if [ -d $BASEDIR/$SCHEDID ]; then
   docker logs -t $CID &> $BASEDIR/$SCHEDID/container.log
-  for i in $(ls $USAGEDIR/monroe-$SCHEDID/*|sort); do 
-    echo -e "$(basename $i)\t\t$(cat $i)" >> $BASEDIR/$SCHEDID/container.stat; 
+  for i in $(ls $USAGEDIR/monroe-$SCHEDID/*|sort); do
+    LINE=$(echo -e "$(basename $i)\t\t$(cat $i)")
+    echo $LINE >> $STATUSDIR/$SCHEDID.traffic;
+    echo $LINE >> $BASEDIR/$SCHEDID/container.stat;
   done
 fi
 
@@ -53,21 +55,21 @@ docker rmi $(docker images -a|grep '^<none>'|awk "{print \$3}") 2>/dev/null
 
 if [ ! -z "$IS_INTERNAL" ]; then
     monroe-rsync-results;
-    rm $BASEDIR/$SCHEDID/container.*    
+    rm $BASEDIR/$SCHEDID/container.*
 else
     monroe-user-experiments;  #rsync, if possible
 fi
 
 rm -r $BASEDIR/$SCHEDID/tmp*       # remove any tmp files
-rm -r $BASEDIR/$SCHEDID/*.tmp 
+rm -r $BASEDIR/$SCHEDID/*.tmp
 rm -r $BASEDIR/$SCHEDID/lost+found # remove lost+found created by fsck
 # any other file should be rsynced by now
 
 if [ ! $(ls -A $BASEDIR/$SCHEDID/ 2>/dev/null) ]; then
   umount $BASEDIR/$SCHEDID            2>/dev/null  || echo 'Directory is no longer mounted.'
   rmdir  $BASEDIR/$SCHEDID            2>/dev/null
-  rm     $BASEDIR/${SCHEDID}.conf     2>/dev/null 
-  rm     $STATUSDIR/${SCHEDID}.conf   2>/dev/null 
+  rm     $BASEDIR/${SCHEDID}.conf     2>/dev/null
+  rm     $STATUSDIR/${SCHEDID}.conf   2>/dev/null
   rm     $BASEDIR/${SCHEDID}.disk     2>/dev/null
   rm     $BASEDIR/${SCHEDID}.counter  2>/dev/null
   rm -r  $USAGEDIR/monroe-${SCHEDID}  2>/dev/null
