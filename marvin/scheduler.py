@@ -761,8 +761,6 @@ SELECT DISTINCT * FROM (
             preselection = opts.get("nodes").split(",")
 
         hidden_keys = [
-            'internal',
-            'basedir',
             'recurrence',
             'period',
             'until']
