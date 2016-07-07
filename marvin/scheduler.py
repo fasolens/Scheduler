@@ -587,7 +587,7 @@ AND n.id NOT IN (
     SELECT DISTINCT nodeid FROM schedule s
     WHERE shared = 0 AND NOT ((s.stop + ? < ?) OR (s.start - ? > ?))
 )
-ORDER BY min_quota DESC
+ORDER BY min_quota DESC, n.heartbeat DESC
                  """
         c.execute(query, [NODE_ACTIVE] +
                   list(chain.from_iterable(type_require)) +
