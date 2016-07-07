@@ -445,6 +445,10 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         else:
             return tasks
 
+    def report_traffic(self, schedid, traffic):
+        # TODO
+        return False, "Not implemented."
+
     def set_status(self, schedid, status):
         c = self.db().cursor()
         if status in TASK_STATUS_CODES:
