@@ -52,6 +52,7 @@ POLICY_TASK_MIN_RUNTIME = 60
 POLICY_TASK_MAX_RUNTIME = 25 * 3600
 # recurrence may only happen with a minimum period of # seconds
 POLICY_TASK_MIN_RECURRENCE = 3600
+POLICY_TASK_STEP_RECURRENCE = 3600
 # scheduling may only happen # seconds in advance
 POLICY_SCHEDULING_PERIOD = 31 * 24 * 3600
 # scheduling may only happen # seconds after previous task
@@ -549,6 +550,10 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
                 raise SchedulerException("Recurrence period too small. "
                                          "Must be greater than %i seconds." %
                                          POLICY_TASK_MIN_RECURRENCE)
+            if period % POLICY_TASK_STEP_RECURRENCE != 0:
+                raise SchedulerException("Recurrence must be a multiple of "\
+                                         "%i seconds." %
+                                         POLICY_TASK_STEP_RECURRENCE)
             intervals = [(fro, fro + delta)
                          for fro in xrange(start, until, period)]
             return intervals

@@ -208,6 +208,9 @@ class Schedule:
                 else:
                     web.ctx.status = '400 Bad request'
                     return error(errmsg)
+            else:
+                web.ctx.status = '400 Bad Request'
+                return error("Unknown status code.")
         elif 'traffic' in params:
             traffic = params.get('traffic','')
             result, errmsg = rest_api.scheduler.report_traffic(
@@ -221,9 +224,6 @@ class Schedule:
         else:
             web.ctx.status = '400 Bad Request'
             return error("Parameters missing (required: status, or traffic)")
-        else:
-            web.ctx.status = '400 Bad Request'
-            return error("Unknown status code.")
 
 # EXPERIMENT ################################################################
 
