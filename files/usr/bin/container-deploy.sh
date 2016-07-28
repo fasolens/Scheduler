@@ -39,15 +39,17 @@ fi
 
 EXISTED=$(docker images -q $CONTAINER_URL)
 docker pull $CONTAINER_URL || exit $ERROR_CONTAINER_NOT_FOUND
+SIZE=$(container-size $CONTAINER_URL)
+
+# TODO: check if storage quota is exceeded - should never happen
+# TODO: store container size in a recoverable place
+
 #retag container image with scheduling id
 docker tag $CONTAINER_URL monroe-$SCHEDID
 if [ -z "$EXISTED" ]; then
     docker rmi $CONTAINER_URL
 fi
 
-if [ $QUOTA_DISK -eq 0 ]; then
-    exit 0
-fi
 if [ ! -d $BASEDIR/$SCHEDID ]; then
     mkdir -p $BASEDIR/$SCHEDID;
     dd if=/dev/zero of=$BASEDIR/${SCHEDID}.disk bs=1000 count=$QUOTA_DISK;
@@ -56,3 +58,5 @@ fi
 mountpoint -q $BASEDIR/$SCHEDID || {
     mount -t ext4 -o loop,data=journal,nodelalloc,barrier=1 $BASEDIR/${SCHEDID}.disk $BASEDIR/${SCHEDID};
 }
+
+echo $SIZE >> $BASEDIR/$SCHEDID/container.stat
