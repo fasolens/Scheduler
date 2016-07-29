@@ -67,7 +67,7 @@ fi
 # network namespace called 'monroe'
 MONROE_NOOP=$(docker ps |grep monroe/noop|awk '{print $1}')
 if [ -z "$MONROE_NOOP" ]; then
-    exit ERROR_NETWORK_CONTEXT_NOT_FOUND;
+    exit $ERROR_NETWORK_CONTEXT_NOT_FOUND;
 fi
 
 docker run -d \
