@@ -26,7 +26,7 @@ fi
 mkdir -p $BASEDIR
 
 if [ -z "$QUOTA_DISK" ]; then
-  QUOTA_DISK=0; #KB!
+  QUOTA_DISK=10000; #KB!
 else
   QUOTA_DISK=$(( $QUOTA_DISK / 1000 ))
 fi;
