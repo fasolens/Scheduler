@@ -54,8 +54,10 @@ PREFETCH_LIMIT = 3
 class SchedulingClient:
     running = threading.Event()
     jobs = {}
-    status_queue = []
+    status_queue = {}
     # delayed status updates to be sent when we are online
+    traffic_queue = {}
+    # actually traffic reports, but I like the name
 
     def stop(self):
         """soft interrupt signal, for use when threading"""
@@ -216,18 +218,31 @@ class SchedulingClient:
         # to be terminated.
 
     def set_status(self, schedid, status):
+        record = self.status_queue.get(schedid)
+        if record is not None:
+            if status == record.get('status'):
+                return
         log.debug("Setting status for task %s to %s" % (schedid, status))
         deployed_msg = {
             "status": status,
             "schedid": schedid,
-            "when": time.time(
-            )}
-        self.status_queue.append(deployed_msg)
+            "when": time.time()
+            }
+        self.status_queue[schedid]=deployed_msg
+        self.post_status()
+
+    def report_traffic(self, schedid, traffic):
+        log.debug("Traffic report for task %s is %s" % (schedid, json.dumps(traffic)))
+        traffic_msg = {
+            "traffic": traffic,
+            "schedid": schedid,
+            }
+        self.traffic_queue[schedid]=traffic_msg
         self.post_status()
 
     def post_status(self):
         try:
-            for status in self.status_queue[:]:
+            for status in self.status_queue.values()[:]:
                 result = requests.put(
                     config['rest-server'] + '/schedules/' + status['schedid'],
                     data=status,
@@ -237,7 +252,28 @@ class SchedulingClient:
                     log.debug("Setting status %s of task %s failed: %s" % \
                               (str(status), status['schedid'], result.text))
                 else:
-                    self.status_queue.pop()
+                    try:
+                        unlink(self.statdir + "/" + status['schedid']+ ".status")
+                    except:
+                        pass
+                    del self.status_queue[status['schedid']]
+
+            for report in self.traffic_queue.values()[:]:
+                result = requests.put(
+                    config['rest-server'] + '/schedules/' + status['schedid'],
+                    data=report,
+                    cert=self.cert,
+                    verify=False)
+                if result.status_code != 200:
+                    log.debug("Traffic report for task %s failed: %s" % \
+                              (status['schedid'], result.text))
+                else:
+                    try:
+                        unlink(self.statdir + "/" + status['schedid']+ ".traffic")
+                    except:
+                        pass
+                    del self.traffic_queue[status['schedid']]
+
         except Exception, ex:
             log.error("Exception in post_status: %s" % str(ex))
             pass
@@ -340,7 +376,7 @@ class SchedulingClient:
                         "Fetching experiment %s did not return a task "
                         "definition, but %s" % (expid, task))
 
-        # FINALLY read and post task status from *.status
+        # FINALLY read and post task status and traffic usage
         try:
             statfiles = glob(self.statdir + "/*.status")
             for f in statfiles:
@@ -349,9 +385,20 @@ class SchedulingClient:
                     status = fd.read().strip()
                     self.set_status(schedid, status)
                     fd.close()
-                unlink(f)
         except Exception,ex:
 	    log.error("Error reading or sending experiment status. %s" % str(ex))
+
+        try:
+            traffiles = glob(self.statdir + "/*.traffic")
+            for f in traffiles:
+                schedid = f.split("/")[-1].split(".traffic")[0]
+                with open(f) as fd:
+                    traffic = json.loads(fd.read().strip())
+                    self.report_traffic(schedid, traffic)
+                    fd.close()
+        except Exception,ex:
+	    log.error("Error reading or sending experiment "\
+                      "traffic report. %s" % str(ex))
 
 
 

@@ -25,7 +25,7 @@ log.setLevel(config['log']['level'])
 
 
 API_VERSION = "1.0"
-PREFETCH_LIMIT = 24 * 3600 
+PREFETCH_LIMIT = 24 * 3600
 # NOTE: major versions will be reflected in the URL
 #       minor versions will increase after first deployment, and should not
 #       break compatibility with prior minor versions.
@@ -178,11 +178,14 @@ class Schedule:
         if role != scheduler.ROLE_NODE:
             web.ctx.status = '401 Unauthorized'
             return error("You'd have to be a node to do that")
-        params = web.input()
-        if 'status' not in params:
-            web.ctx.status = '400 Bad Request'
-            return error("Parameters missing (required: status)")
-        elif schedid in ["", "/"]:
+        params = None
+        try:
+            params = json.loads(web.data().strip())
+        except:
+            pass
+        if params is None or not params:
+            params = web.input()
+        if schedid in ["", "/"]:
             web.ctx.status = '400 Bad Request'
             return error("Scheduling id missing.")
         schedid = schedid[1:]
@@ -194,11 +197,25 @@ class Schedule:
         if name != ("Node %i" % nodeid):
             web.ctx.status = '401 Unauthorized'
             return error("Wrong user to updated this status (%s)" % name)
-        status = params.get('status','').strip()
-        if status in scheduler.TASK_STATUS_CODES:
-            result, errmsg = rest_api.scheduler.set_status(
-                schedid=schedid,
-                status=status)
+        if 'status' in params:
+            status = params.get('status','').strip()
+            if status in scheduler.TASK_STATUS_CODES:
+                result, errmsg = rest_api.scheduler.set_status(
+                    schedid=schedid,
+                    status=status)
+                if result:
+                    return error("Ok.")
+                else:
+                    web.ctx.status = '400 Bad request'
+                    return error(errmsg)
+            else:
+                web.ctx.status = '400 Bad Request'
+                return error("Unknown status code.")
+        elif 'traffic' in params:
+            traffic = params.get('traffic','')
+            result, errmsg = rest_api.scheduler.report_traffic(
+                    schedid=schedid,
+                    traffic=traffic)
             if result:
                 return error("Ok.")
             else:
@@ -206,7 +223,7 @@ class Schedule:
                 return error(errmsg)
         else:
             web.ctx.status = '400 Bad Request'
-            return error("Unknown status code.")
+            return error("Parameters missing (required: status, or traffic)")
 
 # EXPERIMENT ################################################################
 

@@ -28,10 +28,13 @@ fi
 
 if [ -d $BASEDIR/$SCHEDID ]; then
   docker logs -t $CID &> $BASEDIR/$SCHEDID/container.log
-  for i in $(ls $USAGEDIR/monroe-$SCHEDID/*|sort); do
-    LINE=$(echo -e "$(basename $i)\t\t$(cat $i)")
-    echo $LINE >> $STATUSDIR/$SCHEDID.traffic;
-    echo $LINE >> $BASEDIR/$SCHEDID/container.stat;
+  for OUT in "$STATUSDIR/$SCHEDID.traffic" "$BASEDIR/$SCHEDID/container.stat"; do
+    echo "{" > $OUT;
+    for i in $(ls $USAGEDIR/monroe-$SCHEDID/*|sort); do
+      JSON=$(echo -e "  \"$(basename $i)\": $(cat $i)")
+      echo $JSON >> $OUT;
+    done;
+    echo "}" >> $OUT;
   done
 fi
 

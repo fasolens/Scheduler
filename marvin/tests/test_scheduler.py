@@ -138,6 +138,14 @@ class SchedulerTestCase(unittest.TestCase):
         self.assertEqual(r[2]['nodecount'], 1)
         self.assertEqual(r[2]['intervals'], 3)
 
+        r = self.sch.allocate(1,'test', now + 3500, 500, 1, 'status:test', '...',
+                {'recurrence':'simple',
+                 'period': 3600,
+                 'until': now + 3500 + 3600 * 2 + 500
+                })
+        self.assertEqual(r[2]['nodecount'], 1)
+        self.assertEqual(r[2]['intervals'], 3)
+
     def test_12_find_slot(self):
         r = self.sch.find_slot(1)
         self.assertEqual(r[0][0]['nodecount'], 1)

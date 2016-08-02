@@ -55,6 +55,7 @@ class TimingTestCase(unittest.TestCase):
                                   {'recurrence': 'simple',
                                    'period': 3600,
                                    'until': until})
+            print r
             self.assertEqual(r[2]['nodecount'], 1)
             self.assertEqual(r[2]['intervals'], 744)
             r = self.sch.allocate(userid, 'test', now + 750, 60, 1, 'status:test', '...',
