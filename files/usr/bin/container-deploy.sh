@@ -38,7 +38,22 @@ if (( "$DISKSPACE" < $(( 2000000 + $QUOTA_DISK )) )); then
 fi
 
 EXISTED=$(docker images -q $CONTAINER_URL)
+
+# TODO: check if exists, restrict to only this process
+iptables -I OUTPUT 1 -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT
+iptables -Z OUTPUT 1
+iptables -I INPUT 1 -p tcp --source-port 443 -j ACCEPT
+iptables -Z INPUT 1
+
 docker pull $CONTAINER_URL || exit $ERROR_CONTAINER_NOT_FOUND
+
+SENT=$(iptables -vxL OUTPUT | grep "https" | awk '{print $2}')
+RECEIVED=$(iptables -vxL INPUT | grep "https" | awk '{print $2}')
+SUM=$(($SENT + $RECEIVED))
+
+iptables -D OUTPUT -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT
+iptables -D INPUT  -p tcp --source-port 443 -j ACCEPT
+
 SIZE=$(container-size $CONTAINER_URL)
 
 # TODO: check if storage quota is exceeded - should never happen
@@ -59,4 +74,7 @@ mountpoint -q $BASEDIR/$SCHEDID || {
     mount -t ext4 -o loop,data=journal,nodelalloc,barrier=1 $BASEDIR/${SCHEDID}.disk $BASEDIR/${SCHEDID};
 }
 
-echo $SIZE >> $BASEDIR/$SCHEDID/container.stat
+JSON=$( echo '{}' | jq .deployment=$SUM )
+JSON=$( echo "$JSON" | jq ".container=\"$SIZE\"" )
+
+echo $JSON >> $BASEDIR/$SCHEDID.traffic
