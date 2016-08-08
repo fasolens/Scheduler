@@ -27,7 +27,11 @@ else
 fi
 
 if [ -d $BASEDIR/$SCHEDID ]; then
-  docker logs -t $CID &> $BASEDIR/$SCHEDID/container.log
+  if [ ! -z "$CID" ]; then
+    docker logs -t $CID &> $BASEDIR/$SCHEDID/container.log;
+  else
+    echo "CID not found for $CONTAINER." > BASEDIR/$SCHEDID/container.log;
+  fi
   TRAFFIC=$(cat $STATUSDIR/$SCHEDID.traffic)
 
   for i in $(ls $USAGEDIR/monroe-$SCHEDID/*|sort); do
