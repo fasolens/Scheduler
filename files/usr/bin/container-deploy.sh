@@ -47,8 +47,8 @@ iptables -Z INPUT 1
 
 docker pull $CONTAINER_URL || exit $ERROR_CONTAINER_NOT_FOUND
 
-SENT=$(iptables -vxL OUTPUT | grep "https" | awk '{print $2}')
-RECEIVED=$(iptables -vxL INPUT | grep "https" | awk '{print $2}')
+SENT=$(iptables -vxL OUTPUT 1 | awk '{print $2}')
+RECEIVED=$(iptables -vxL INPUT 1 | awk '{print $2}')
 SUM=$(($SENT + $RECEIVED))
 
 iptables -D OUTPUT -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT
