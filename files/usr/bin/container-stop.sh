@@ -32,6 +32,7 @@ if [ -d $BASEDIR/$SCHEDID ]; then
   else
     echo "CID not found for $CONTAINER." > BASEDIR/$SCHEDID/container.log;
   fi
+  monroe-user-experiments;
   TRAFFIC=$(cat $STATUSDIR/$SCHEDID.traffic)
 
   for i in $(ls $USAGEDIR/monroe-$SCHEDID/*|sort); do
@@ -63,7 +64,7 @@ if [ ! -z "$IS_INTERNAL" ]; then
     monroe-rsync-results;
     rm $BASEDIR/$SCHEDID/container.*
 else
-    monroe-user-experiments;  #rsync, if possible
+    monroe-user-experiments;  #final rsync, if possible
 fi
 
 rm -r $BASEDIR/$SCHEDID/tmp*       # remove any tmp files
@@ -71,7 +72,7 @@ rm -r $BASEDIR/$SCHEDID/*.tmp
 rm -r $BASEDIR/$SCHEDID/lost+found # remove lost+found created by fsck
 # any other file should be rsynced by now
 
-if [ ! $(ls -A $BASEDIR/$SCHEDID/ 2>/dev/null) ]; then
+if [ -z "$(ls -A $BASEDIR/$SCHEDID/ 2>/dev/null)" ]; then
   umount $BASEDIR/$SCHEDID            2>/dev/null  || echo 'Directory is no longer mounted.'
   rmdir  $BASEDIR/$SCHEDID            2>/dev/null
   rm     $BASEDIR/${SCHEDID}.conf     2>/dev/null
