@@ -33,7 +33,7 @@ def inventory_api(route, data=None):
     log.debug("API request %s with params %s" % (route, json.dumps(headers)))
     log.debug("Hashed message: %s" % message)
     r = requests.get(config['inventory']['url'] + route, headers=headers)
-    #log.debug("Reply: %s" % r.text)
+    log.debug("Reply: %s" % r.text)
     if "Access denied" not in r.text:
         try:
             return json.loads(r.text)

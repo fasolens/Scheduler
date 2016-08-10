@@ -186,7 +186,8 @@ class Scheduler:
         if not set(["nodes", "node_type", "node_interface", "owners",
                     "experiments", "schedule",
                     "quota_owner_time", "quota_owner_data",
-                    "quota_owner_storage" 
+                    "quota_owner_storage", "quota_journal",
+                    "traffic_reports"
                     ]).issubset(set(tables)):
             for statement in """
 
@@ -228,6 +229,17 @@ CREATE TABLE IF NOT EXISTS schedule (id INTEGER PRIMARY KEY ASC,
     status TEXT NOT NULL, shared INTEGER, deployment_options TEXT,
     FOREIGN KEY (nodeid) REFERENCES nodes(id),
     FOREIGN KEY (expid) REFERENCES experiments(id));
+CREATE TABLE IF NOT EXISTS traffic_reports (scheduleid INTEGER PRIMARY KEY ASC,
+    meter TEXT NOT NULL, value INTEGER NOT NULL,
+    FOREIGN KEY (scheduleid) REFERENCES schedule(id));
+
+CREATE INDEX IF NOT EXISTS k_iccid      ON node_interface(iccid);
+CREATE TABLE IF NOT EXISTS quota_journal (timestamp INTEGER PRIMARY KEY ASC,
+    quota TEXT NOT NULL, ownerid INTEGER, iccid TEXT,
+    new_value INTEGER NOT NULL,
+    reason TEXT NOT NULL,
+    FOREIGN KEY (ownerid) REFERENCES owners(id),
+    FOREIGN KEY (iccid) REFERENCES node_interface(iccid))
 
 CREATE INDEX IF NOT EXISTS k_status     ON nodes(status);
 CREATE INDEX IF NOT EXISTS k_heartbeat  ON nodes(heartbeat);
@@ -298,12 +310,19 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
                                        last_reset = ?
                          WHERE reset_date < ?""" % table,
                       (self.first_of_next_month(), now, now))
+            if c.rowcount > 0:
+                c.execute("""INSERT INTO quota_journal
+        SELECT last_reset, '%s', ownerid, NULL, reset_value, "scheduled reset"
+        FROM %s           """ % (table, table))
         self.db().commit()
 
     def _set_quota(self, userid, value, table):
         c = self.db().cursor()
+        now = int(time.time())
         c.execute("UPDATE %s SET current = ? WHERE ownerid = ?" % table,
                   (value, userid))
+        c.execute("INSERT INTO quota_journal VALUES (?, ?, ?, NULL, ?, ?)",
+                  now, table, userid, value, "set by API")
         self.db().commit()
         return c.rowcount
 
@@ -370,16 +389,25 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
                 "VALUES (?, ?, ?, ?, ?)",
                 (userid, POLICY_DEFAULT_QUOTA_TIME, POLICY_DEFAULT_QUOTA_TIME,
                  first_of_next_month, now))
+            c.execute("INSERT INTO quota_journal VALUES (?, ?, ?, NULL, ?, ?)",
+                      now, "quota_owner_time", userid,
+                      POLICY_DEFAULT_QUOTA_TIME, "user created")
             c.execute(
                 "INSERT OR REPLACE INTO quota_owner_data "
                 "VALUES (?, ?, ?, ?, ?)",
                 (userid, POLICY_DEFAULT_QUOTA_DATA, POLICY_DEFAULT_QUOTA_DATA,
                  first_of_next_month, now))
+            c.execute("INSERT INTO quota_journal VALUES (?, ?, ?, NULL, ?, ?)",
+                      now, "quota_owner_data", userid,
+                      POLICY_DEFAULT_QUOTA_DATA, "user created")
             c.execute(
                 "INSERT OR REPLACE INTO quota_owner_storage "
                 "VALUES (?, ?, ?, ?, ?)",
                 (userid, POLICY_DEFAULT_QUOTA_STORAGE,
                  POLICY_DEFAULT_QUOTA_STORAGE, first_of_next_month, now))
+            c.execute("INSERT INTO quota_journal VALUES (?, ?, ?, NULL, ?, ?)",
+                      now, "quota_owner_storage", userid,
+                      POLICY_DEFAULT_QUOTA_STORAGE, "user created")
             self.db().commit()
             return userid, None
         except db.Error as er:
@@ -448,8 +476,22 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
             return tasks
 
     def report_traffic(self, schedid, traffic):
-        # TODO
-        return False, "Not implemented."
+        c = self.db().cursor()
+        # these two are on the deployment quota
+        if 'deployment' in traffic:
+          c.execute("INSERT OR REPLACE INTO traffic_reports VALUES (?,?,?)",
+                    schedid, 'deployment', traffic['deployment'])
+        if 'results' in traffic:
+          c.execute("INSERT OR REPLACE INTO traffic_reports VALUES (?,?,?)",
+                    schedid, 'results', traffic['results'])
+        if 'interfaces' in traffic:
+            for iccid, value in traffic['interfaces'].iteritems():
+                c.execute("INSERT OR REPLACE INTO traffic_reports VALUES (?,?,?)",
+                          schedid, iccid, value)
+        if traffic.get('final',False):
+            #TODO: restore quotas
+            pass
+        return True
 
     def set_status(self, schedid, status):
         c = self.db().cursor()
@@ -870,21 +912,45 @@ SELECT DISTINCT * FROM (
                               (node['id'], expid, i[0], i[1], 'defined',
                                shared, json.dumps(deployment_opts)))
 
+                now = int(time.time())
+                total_time = duration * nodecount
+                total_storage = req_storage * nodecount
+                total_traffic = req_traffic * nodecount * 3
                 c.execute("UPDATE node_interface SET "
                           "quota_value = quota_value - ? "
                           "WHERE nodeid = ?",
                           (req_traffic, node['id']))
+                c.execute("""INSERT INTO quota_journal SELECT ?, "node_interface",
+                             NULL, iccid, quota_value,
+                             "experiment #%s requested %i bytes of traffic" FROM
+                             node_interface WHERE nodeid = ?""" % (expid, req_traffic),
+                             now, node['id'])
                 c.execute("UPDATE quota_owner_time SET current = ? "
                           "WHERE ownerid = ?",
-                          (u['quota_time'] - (duration * nodecount), ownerid))
+                          (u['quota_time'] - total_time, ownerid))
+                c.execute("""INSERT INTO quota_journal SELECT ?, "quota_owner_time",
+                             ownerid, NULL, current,
+                             "experiment #%s requested %i seconds runtime" FROM
+                             quota_owner_time WHERE ownerid = ?""" % (expid, total_time),
+                             now, ownerid)
                 c.execute("UPDATE quota_owner_storage SET current = ? "
                           "WHERE ownerid = ?",
                           (u['quota_storage'] - (req_storage * nodecount),
                            ownerid))
+                c.execute("""INSERT INTO quota_journal SELECT ?, "quota_owner_storage",
+                             ownerid, NULL, current,
+                             "experiment #%s requested %i bytes" FROM
+                             quota_owner_storage WHERE ownerid = ?""" % (expid, total_storage),
+                             now, ownerid)
                 c.execute("UPDATE quota_owner_data SET current = ? "
                           "WHERE ownerid = ?",
                           (u['quota_data'] - (req_traffic * nodecount * 3),
                            ownerid))
+                c.execute("""INSERT INTO quota_journal SELECT ?, "quota_owner_data",
+                             ownerid, NULL, current,
+                             "experiment #%s requested %i bytes" FROM
+                             quota_owner_data WHERE ownerid = ?""" % (expid, total_traffic),
+                             now, ownerid)
             self.db().commit()
             return expid, "Created experiment %s on %s nodes " \
                           "as %s intervals." % \
