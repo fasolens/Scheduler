@@ -492,6 +492,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         if traffic.get('final',False):
             #TODO: restore quotas
             pass
+        self.db().commit()
         return True, "Ok."
 
     def set_status(self, schedid, status):
