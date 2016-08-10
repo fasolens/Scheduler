@@ -239,7 +239,7 @@ CREATE TABLE IF NOT EXISTS quota_journal (timestamp INTEGER PRIMARY KEY ASC,
     new_value INTEGER NOT NULL,
     reason TEXT NOT NULL,
     FOREIGN KEY (ownerid) REFERENCES owners(id),
-    FOREIGN KEY (iccid) REFERENCES node_interface(iccid))
+    FOREIGN KEY (iccid) REFERENCES node_interface(iccid));
 
 CREATE INDEX IF NOT EXISTS k_status     ON nodes(status);
 CREATE INDEX IF NOT EXISTS k_heartbeat  ON nodes(heartbeat);
