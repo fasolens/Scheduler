@@ -260,21 +260,21 @@ class SchedulingClient:
 
             for report in self.traffic_queue.values()[:]:
                 result = requests.put(
-                    config['rest-server'] + '/schedules/' + status['schedid'],
+                    config['rest-server'] + '/schedules/' + report['schedid'],
                     data=report,
                     cert=self.cert,
                     verify=False)
                 if result.status_code != 200:
                     log.debug("Traffic report for task %s failed: %s" % \
-                              (status['schedid'], result.text))
+                              (report['schedid'], result.text))
                 else:
                     try:
                         # if the final report exists, both can be deleted.
-                        unlink(self.statdir + "/" + status['schedid']+ ".traffic_")
-                        unlink(self.statdir + "/" + status['schedid']+ ".traffic")
+                        unlink(self.statdir + "/" + report['schedid']+ ".traffic_")
+                        unlink(self.statdir + "/" + report['schedid']+ ".traffic")
                     except:
                         pass
-                    del self.traffic_queue[status['schedid']]
+                    del self.traffic_queue[report['schedid']]
 
         except Exception, ex:
             log.error("Exception in post_status: %s" % str(ex))
