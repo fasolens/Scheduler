@@ -495,14 +495,14 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
 
     def set_status(self, schedid, status):
         c = self.db().cursor()
-        code = status.split[";"][0]
+        code = status.split(';')[0]
         if code in TASK_STATUS_CODES:
             c.execute("SELECT status FROM schedule WHERE id = ?", (schedid,))
             result = c.fetchone()
             if not result:
                 return False, "Could not find scheduling ID"
             oldstat = result[0]
-            oldcode = oldstat.split[";"][0]
+            oldcode = oldstat.split(';')[0]
             if oldcode not in TASK_FINAL_CODES:
                 c.execute(
                     "UPDATE schedule SET status = ? WHERE id = ?",
