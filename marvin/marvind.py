@@ -185,7 +185,7 @@ class SchedulingClient:
                 log.warning(
                     "Atq start hook for task %s returned non-zero (%s). Failed." %
                     (id, pro.returncode))
-                self.set_status(id, "failed")
+                self.set_status(id, "failed; atq exit code %i" % pro.returncode)
                 # TODO: handle tasks that failed scheduling
         else:
             log.warning(
@@ -199,7 +199,7 @@ class SchedulingClient:
                 log.warning(
                     "Start hook for task %s returned non-zero (%s). Failed." %
                     (id, pro.returncode))
-                self.set_status(id, "failed")
+                self.set_status(id, "failed; start hook exit code %i" % pro.returncode)
 
         timestamp = sched['stop']
         timestring = datetime.fromtimestamp(
@@ -212,7 +212,7 @@ class SchedulingClient:
         print serr
         if pro.returncode != 0:
             log.error("Failed to set stop hook for task %i" % stophook)
-            self.set_status(id, "failed")
+            self.set_status(id, "failed; atq stop exit code %i" % pro.returncode)
 
         # TODO: handle tasks that failed scheduling
         # FIXME: if this happens, it is actually quite serious.
@@ -330,7 +330,8 @@ class SchedulingClient:
         for sched in schedule:
             schedid = str(sched["id"])   # scheduling id. schedid n:1 taskid
             expid = str(sched["expid"])
-            if sched["status"] in ['failed', 'finished', 'stopped', 'aborted', 'canceled']:
+            code = sched["status"].split(";")[0]
+            if code in ['failed', 'finished', 'stopped', 'aborted', 'canceled']:
                 log.debug(
                     "Not scheduling finished or aborted task "
                     "(Taskid %s, scheduling id %s)" % (expid, schedid))

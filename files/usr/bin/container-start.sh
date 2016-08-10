@@ -84,7 +84,7 @@ docker run -d \
 CID=$(docker ps --no-trunc | grep $CONTAINER | awk '{print $1}' | head -n 1)
 
 if [ -z "$CID" ]; then
-    echo 'failed' > $STATUSDIR/$SCHEDID.status
+    echo 'failed; container exited immediately' > $STATUSDIR/$SCHEDID.status
     exit $ERROR_CONTAINER_DID_NOT_START;
 fi
 
@@ -94,7 +94,7 @@ PID=$(docker inspect -f '{{.State.Pid}}' $CID)
 if [ ! -z $PID ]; then
   echo "Started docker process $CID $PID."
 else
-  echo 'failed' > $STATUSDIR/$SCHEDID.status
+  echo 'failed; container exited immediately' > $STATUSDIR/$SCHEDID.status
   exit $ERROR_CONTAINER_DID_NOT_START;
 fi
 
