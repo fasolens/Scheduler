@@ -212,7 +212,11 @@ class Schedule:
                 web.ctx.status = '400 Bad Request'
                 return error("Unknown status code.")
         elif 'traffic' in params:
-            traffic = params.get('traffic','')
+            try:
+                traffic = json.loads(params.get('traffic',''))
+            except:
+                web.ctx.status = '400 Bad Request'
+                return error("Count not parse JSON code for traffic parameter")
             result, errmsg = rest_api.scheduler.report_traffic(
                     schedid=schedid,
                     traffic=traffic)
