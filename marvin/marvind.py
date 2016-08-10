@@ -165,7 +165,9 @@ class SchedulingClient:
             self.set_status(id, "deployed")
         else:
             if pro.returncode == 100:  # CONTAINER_DOES_NOT_EXIST
-                self.set_status(id, "failed")
+                self.set_status(id, "failed; container does not exist")
+            elif pro.returncode == 101:  # INSUFFICIENT_DISK_SPACE
+                self.set_status(id, "delayed; insufficient disk space")
             # TODO detect acceptable failure codes (delayed deployment)
             return
 
