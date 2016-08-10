@@ -234,7 +234,7 @@ CREATE TABLE IF NOT EXISTS traffic_reports (scheduleid INTEGER PRIMARY KEY ASC,
     FOREIGN KEY (scheduleid) REFERENCES schedule(id));
 
 CREATE INDEX IF NOT EXISTS k_iccid      ON node_interface(iccid);
-CREATE TABLE IF NOT EXISTS quota_journal (timestamp INTEGER PRIMARY KEY ASC,
+CREATE TABLE IF NOT EXISTS quota_journal (timestamp INTEGER,
     quota TEXT NOT NULL, ownerid INTEGER, iccid TEXT,
     new_value INTEGER NOT NULL,
     reason TEXT NOT NULL,
@@ -248,6 +248,7 @@ CREATE INDEX IF NOT EXISTS k_ssl_id     ON owners(ssl_id);
 CREATE INDEX IF NOT EXISTS k_recurring  ON experiments(recurring_until);
 CREATE INDEX IF NOT EXISTS k_start      ON schedule(start);
 CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
+CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
 
             """.split(";"):
                 c.execute(statement.strip())
@@ -322,7 +323,7 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
         c.execute("UPDATE %s SET current = ? WHERE ownerid = ?" % table,
                   (value, userid))
         c.execute("INSERT INTO quota_journal VALUES (?, ?, ?, NULL, ?, ?)",
-                  now, table, userid, value, "set by API")
+                  (now, table, userid, value, "set by API"))
         self.db().commit()
         return c.rowcount
 
@@ -390,24 +391,24 @@ CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
                 (userid, POLICY_DEFAULT_QUOTA_TIME, POLICY_DEFAULT_QUOTA_TIME,
                  first_of_next_month, now))
             c.execute("INSERT INTO quota_journal VALUES (?, ?, ?, NULL, ?, ?)",
-                      now, "quota_owner_time", userid,
-                      POLICY_DEFAULT_QUOTA_TIME, "user created")
+                      (now, "quota_owner_time", userid,
+                       POLICY_DEFAULT_QUOTA_TIME, "user created"))
             c.execute(
                 "INSERT OR REPLACE INTO quota_owner_data "
                 "VALUES (?, ?, ?, ?, ?)",
                 (userid, POLICY_DEFAULT_QUOTA_DATA, POLICY_DEFAULT_QUOTA_DATA,
                  first_of_next_month, now))
             c.execute("INSERT INTO quota_journal VALUES (?, ?, ?, NULL, ?, ?)",
-                      now, "quota_owner_data", userid,
-                      POLICY_DEFAULT_QUOTA_DATA, "user created")
+                      (now, "quota_owner_data", userid,
+                       POLICY_DEFAULT_QUOTA_DATA, "user created"))
             c.execute(
                 "INSERT OR REPLACE INTO quota_owner_storage "
                 "VALUES (?, ?, ?, ?, ?)",
                 (userid, POLICY_DEFAULT_QUOTA_STORAGE,
                  POLICY_DEFAULT_QUOTA_STORAGE, first_of_next_month, now))
             c.execute("INSERT INTO quota_journal VALUES (?, ?, ?, NULL, ?, ?)",
-                      now, "quota_owner_storage", userid,
-                      POLICY_DEFAULT_QUOTA_STORAGE, "user created")
+                      (now, "quota_owner_storage", userid,
+                       POLICY_DEFAULT_QUOTA_STORAGE, "user created"))
             self.db().commit()
             return userid, None
         except db.Error as er:
@@ -924,7 +925,7 @@ SELECT DISTINCT * FROM (
                              NULL, iccid, quota_value,
                              "experiment #%s requested %i bytes of traffic" FROM
                              node_interface WHERE nodeid = ?""" % (expid, req_traffic),
-                             now, node['id'])
+                             (now, node['id']))
                 c.execute("UPDATE quota_owner_time SET current = ? "
                           "WHERE ownerid = ?",
                           (u['quota_time'] - total_time, ownerid))
@@ -932,7 +933,7 @@ SELECT DISTINCT * FROM (
                              ownerid, NULL, current,
                              "experiment #%s requested %i seconds runtime" FROM
                              quota_owner_time WHERE ownerid = ?""" % (expid, total_time),
-                             now, ownerid)
+                             (now, ownerid))
                 c.execute("UPDATE quota_owner_storage SET current = ? "
                           "WHERE ownerid = ?",
                           (u['quota_storage'] - (req_storage * nodecount),
@@ -941,7 +942,7 @@ SELECT DISTINCT * FROM (
                              ownerid, NULL, current,
                              "experiment #%s requested %i bytes" FROM
                              quota_owner_storage WHERE ownerid = ?""" % (expid, total_storage),
-                             now, ownerid)
+                             (now, ownerid))
                 c.execute("UPDATE quota_owner_data SET current = ? "
                           "WHERE ownerid = ?",
                           (u['quota_data'] - (req_traffic * nodecount * 3),
@@ -950,7 +951,7 @@ SELECT DISTINCT * FROM (
                              ownerid, NULL, current,
                              "experiment #%s requested %i bytes" FROM
                              quota_owner_data WHERE ownerid = ?""" % (expid, total_traffic),
-                             now, ownerid)
+                             (now, ownerid))
             self.db().commit()
             return expid, "Created experiment %s on %s nodes " \
                           "as %s intervals." % \
