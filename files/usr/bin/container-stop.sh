@@ -79,7 +79,7 @@ if [ -z "$(ls -A $BASEDIR/$SCHEDID/ 2>/dev/null)" ]; then
   rm     $STATUSDIR/${SCHEDID}.conf   2>/dev/null
   rm     $BASEDIR/${SCHEDID}.disk     2>/dev/null
   rm     $BASEDIR/${SCHEDID}.counter  2>/dev/null
-  rm     $BASEDIR/${SCHEDID}.traffic  2>/dev/null
   rm -r  $USAGEDIR/monroe-${SCHEDID}  2>/dev/null
+  mv     $BASEDIR/${SCHEDID}.traffic  $BASEDIR/${SCHEDID}.traffic_ 2>/dev/null
 fi
 rm     $BASEDIR/${SCHEDID}.pid      2>/dev/null

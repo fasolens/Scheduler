@@ -269,7 +269,8 @@ class SchedulingClient:
                               (status['schedid'], result.text))
                 else:
                     try:
-                        # FIXME traffic reports should not be unlinked until the end of the run
+                        # if the final report exists, both can be deleted.
+                        unlink(self.statdir + "/" + status['schedid']+ ".traffic_")
                         unlink(self.statdir + "/" + status['schedid']+ ".traffic")
                     except:
                         pass
