@@ -236,7 +236,7 @@ class SchedulingClient:
     def report_traffic(self, schedid, traffic):
         log.debug("Traffic report for task %s is %s" % (schedid, json.dumps(traffic)))
         traffic_msg = {
-            "traffic": traffic,
+            "traffic": json.dumps(traffic),
             "schedid": schedid,
             }
         self.traffic_queue[schedid]=traffic_msg

@@ -481,14 +481,14 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         # these two are on the deployment quota
         if 'deployment' in traffic:
           c.execute("INSERT OR REPLACE INTO traffic_reports VALUES (?,?,?)",
-                    schedid, 'deployment', traffic['deployment'])
+                    (schedid, 'deployment', traffic['deployment']))
         if 'results' in traffic:
           c.execute("INSERT OR REPLACE INTO traffic_reports VALUES (?,?,?)",
-                    schedid, 'results', traffic['results'])
+                    (schedid, 'results', traffic['results']))
         if 'interfaces' in traffic:
             for iccid, value in traffic['interfaces'].iteritems():
                 c.execute("INSERT OR REPLACE INTO traffic_reports VALUES (?,?,?)",
-                          schedid, iccid, value)
+                          (schedid, iccid, value))
         if traffic.get('final',False):
             #TODO: restore quotas
             pass
