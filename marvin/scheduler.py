@@ -347,7 +347,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
             c.execute("""SELECT * FROM quota_journal j, node_interface i WHERE 
                          j.iccid = i.iccid AND i.nodeid = ? AND maxage > ?""",
                       (nodeid, maxage))
-        journal = [dict(x) for x in c.fetchall()] or None
+        journal = [dict(x) for x in c.fetchall()] 
         return journal
 
     def get_traffic_report(self, schedid):
