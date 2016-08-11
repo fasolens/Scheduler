@@ -32,7 +32,7 @@ class SchedulerTestCase(unittest.TestCase):
                   ('1', 'test-node', 'active', 0))
             c.execute("INSERT OR REPLACE INTO node_interface "
                   "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                  ('1', '', '', '', '', 0, 0, 0, 0, 0))
+                  ('1', 'a', 'ab', 'abc', 'abcd', 0, 0, 0, 0, 0))
             self.sch.db().commit()
             self.sch.set_node_types(1, 'status:test')
 
@@ -177,6 +177,10 @@ class SchedulerTestCase(unittest.TestCase):
                               {'storage':600})
         self.assertEqual(r[2]['required'], 600)
 
+    def test_14_journal(self):
+        r = self.sch.get_quota_journal(userid=1)
+        self.assertEqual(len(r), 39)
+
     def test_21_delete_experiment(self):
         r = self.sch.delete_experiment(99)
         self.assertEqual(r[0],0)
@@ -185,5 +189,5 @@ class SchedulerTestCase(unittest.TestCase):
 
 
     def test_99_cleanup(self):
-        os.unlink(TEMP_DB)
+        #os.unlink(TEMP_DB)
         os.unlink(TEMP_LOG)
