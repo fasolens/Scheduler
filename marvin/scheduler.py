@@ -345,7 +345,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
             c.execute(query + " AND iccid=?", (maxage, iccid))
         elif nodeid:
             c.execute("""SELECT * FROM quota_journal j, node_interface i WHERE 
-                         j.iccid = i.iccid AND i.nodeid = ? AND maxage > ?""",
+                         j.iccid = i.iccid AND i.nodeid = ? AND timestamp > ?""",
                       (nodeid, maxage))
         journal = [dict(x) for x in c.fetchall()] 
         return journal
