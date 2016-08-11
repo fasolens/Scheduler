@@ -76,6 +76,8 @@ class Resource:
             path = nodeid.split("/")
             if len(path) > 2 and path[2] == 'schedules':
                 data = rest_api.scheduler.get_schedule(nodeid=path[1])
+            elif len(path) > 2 and path[2] == 'journals':
+                data = rest_api.scheduler.get_quota_journal(nodeid=path[1])
             elif len(path) > 2 and path[2] == 'all':
                 data = {
                   'schedules': rest_api.scheduler.get_schedule(nodeid=path[1]),
@@ -338,6 +340,8 @@ class User:
                 data = rest_api.scheduler.get_schedule(userid=path[1])
             elif len(path) > 2 and path[2] == 'experiments':
                 data = rest_api.scheduler.get_experiments(userid=path[1])
+            elif len(path) > 2 and path[2] == 'journals':
+                data = rest_api.scheduler.get_quota_journal(userid=path[1])
             else:
                 data = rest_api.scheduler.get_users(path[1])
 
