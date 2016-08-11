@@ -181,6 +181,10 @@ class SchedulerTestCase(unittest.TestCase):
         r = self.sch.get_quota_journal(userid=1)
         self.assertEqual(len(r), 39)
 
+    def test_15_reports(self):
+        r = self.sch.get_schedule(schedid=1)
+        self.assertEqual(r[0]['report'], [])
+
     def test_21_delete_experiment(self):
         r = self.sch.delete_experiment(99)
         self.assertEqual(r[0],0)

@@ -229,9 +229,9 @@ CREATE TABLE IF NOT EXISTS schedule (id INTEGER PRIMARY KEY ASC,
     status TEXT NOT NULL, shared INTEGER, deployment_options TEXT,
     FOREIGN KEY (nodeid) REFERENCES nodes(id),
     FOREIGN KEY (expid) REFERENCES experiments(id));
-CREATE TABLE IF NOT EXISTS traffic_reports (scheduleid INTEGER PRIMARY KEY ASC,
+CREATE TABLE IF NOT EXISTS traffic_reports (schedid INTEGER PRIMARY KEY ASC,
     meter TEXT NOT NULL, value INTEGER NOT NULL,
-    FOREIGN KEY (scheduleid) REFERENCES schedule(id));
+    FOREIGN KEY (schedid) REFERENCES schedule(id));
 
 CREATE INDEX IF NOT EXISTS k_iccid      ON node_interface(iccid);
 CREATE TABLE IF NOT EXISTS quota_journal (timestamp INTEGER,
@@ -487,6 +487,11 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         for x in tasks:
             x['deployment_options'] = json.loads(
                 x.get('deployment_options', '{}'))
+        if len(tasks)==1:
+            for x in tasks:
+                c.execute("SELECT * FROM traffic_reports WHERE schedid=?",
+                          (x.get('id'),))
+                x['report']=[dict(r) for r in c.fetchall()]
         if limit > 0:
             return tasks[:limit]
         else:
@@ -941,9 +946,9 @@ SELECT DISTINCT * FROM (
                 c.execute("""INSERT INTO quota_journal SELECT ?, "node_interface",
                              NULL, iccid, quota_value,
                              "experiment #%s requested %i bytes of traffic" FROM
-                             node_interface WHERE nodeid = ? and status = ? """ % 
-                             (expid, req_traffic, DEVICE_CURRENT),
-                             (now, node['id']))
+                             node_interface WHERE nodeid = ? and status = ? """ %
+                             (expid, req_traffic),
+                             (now, node['id'], DEVICE_CURRENT))
                 c.execute("UPDATE quota_owner_time SET current = ? "
                           "WHERE ownerid = ?",
                           (u['quota_time'] - total_time, ownerid))
