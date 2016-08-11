@@ -936,12 +936,13 @@ SELECT DISTINCT * FROM (
                 total_traffic = req_traffic * nodecount * 3
                 c.execute("UPDATE node_interface SET "
                           "quota_value = quota_value - ? "
-                          "WHERE nodeid = ?",
-                          (req_traffic, node['id']))
+                          "WHERE nodeid = ? and status = ?",
+                          (req_traffic, node['id'], DEVICE_CURRENT))
                 c.execute("""INSERT INTO quota_journal SELECT ?, "node_interface",
                              NULL, iccid, quota_value,
                              "experiment #%s requested %i bytes of traffic" FROM
-                             node_interface WHERE nodeid = ?""" % (expid, req_traffic),
+                             node_interface WHERE nodeid = ? and status = ? """ % 
+                             (expid, req_traffic, DEVICE_CURRENT),
                              (now, node['id']))
                 c.execute("UPDATE quota_owner_time SET current = ? "
                           "WHERE ownerid = ?",
