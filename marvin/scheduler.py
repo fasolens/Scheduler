@@ -336,6 +336,22 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
     def set_time_quota(self, userid, value):
         return self._set_quota(userid, value, 'quota_owner_time')
 
+    def get_quota_journal(self, userid=None, iccid=None, maxage=0):
+        c = self.db().cursor()
+        query = "SELECT * FROM quota_journal WHERE timestamp > ?"
+        if userid:
+            c.execute(query + " AND ownerid=?", (maxage, userid))
+        elif iccid:
+            c.execute(query + " AND iccid=?", (maxage, iccid))
+        journal = [dict(x) for x in c.fetchall()] or None
+        return journal
+
+    def get_traffic_report(self, schedid):
+        c = self.db().cursor()
+        c.execute("SELECT * FROM traffic_reports WHERE schedid=?", schedid)
+        report = [dict(x) for x in c.fetchall()] or None
+        return report
+
     def get_users(self, userid=None, ssl=None):
         self.check_quotas()
 
