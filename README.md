@@ -86,7 +86,13 @@ only for nodes (role: node)
 
   * GET resources/#/schedules
   * PUT resources/#       [send heartbeat]
-  * PUT schedules/#        status=...
+  * PUT schedules/#       Status code or JSON traffic report, see below.
+
+To update the node status, send the schedules/# PUT request with the following 
+fields:
+
+  * schedid    - the scheduling ID of the task
+  * status     - the status code, see below. (text)
 
 Valid status codes are:
 
@@ -94,14 +100,33 @@ Valid status codes are:
   * deployed   - node has deployed the experiment, scheduled a start time
   * started    - node has successfully started the experiment
   * restarted  - node has restarted the experiment after a node failure
+  * delayed    - the deployment or start failed for a temporary reason.
 
 These status codes are final and cannot be overridden:
 
-  * stopped    - experiment stopped by scheduler 
+  * stopped    - experiment stopped by scheduler
   * finished   - experiment completed, exited before being stopped
   * failed     - scheduling process failed
   * canceled   - user deleted experiment, task not deployed (but some were)
   * aborted    - user deleted experiment, task had been deployed
+
+All status codes can be suffixed with ; and a reason (free text).
+
+A valid traffic report is a JSON dictionary, and will overwrite the last
+traffic report for the same scheduling ID. To send a traffic report, provide 
+the keys
+
+  * schedid    - the scheduling ID of the task
+  * report     - the traffic report as JSON dictionary.
+
+The traffic report may contain arbitrary keys and values. It is planned to
+recognize the following keys for quota reimbursements:
+
+  * results    - bytes of result data transferred (via ssh + compression)
+  * deployment - bytes of deployment data transferred (via https + compression)
+  * [iccid]    - traffic transferred over an interface with the given ICCID.
+
+Quota reimbursements are not implemented yet.
 
 ## Experiment and scheduling parameters:
 
