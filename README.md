@@ -86,7 +86,7 @@ only for nodes (role: node)
 
   * GET resources/#/schedules
   * PUT resources/#       [send heartbeat]
-  * PUT schedules/#       Status code or JSON traffic report, see below.
+  * PUT schedules/#       [status code or JSON traffic report, see below.]
 
 To update the node status, send the schedules/# PUT request with the following 
 fields:
