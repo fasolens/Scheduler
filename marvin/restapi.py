@@ -77,7 +77,10 @@ class Resource:
             if len(path) > 2 and path[2] == 'schedules':
                 data = rest_api.scheduler.get_schedule(nodeid=path[1])
             elif len(path) > 2 and path[2] == 'journals':
-                data = rest_api.scheduler.get_quota_journal(nodeid=path[1])
+                if len(path) > 3:
+                  data = rest_api.scheduler.get_quota_journal(iccid=path[3])
+                else:
+                  data = rest_api.scheduler.get_quota_journal(nodeid=path[1])
             elif len(path) > 2 and path[2] == 'all':
                 data = {
                   'schedules': rest_api.scheduler.get_schedule(nodeid=path[1]),

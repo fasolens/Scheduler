@@ -44,7 +44,7 @@ recovered on restart.
   * schedules  (the n:m mapping of experiments to nodes, with id, start and stop time)
 
 #### Access levels:
-'#' is a placeholder for a node, task, user or scheduling id
+'#' is a placeholder for a node id, task id, user id, iccid or scheduling id
 
 for everyone:
 
@@ -58,10 +58,13 @@ for all authenticated clients:
   * GET resources/#/schedules
   * GET resources/#/experiments
   * GET resources/#/all
+  * GET resources/#/journals
+  * GET resources/#(nodeid)/journals/#(iccid)
   * GET users
   * GET users/#
   * GET users/#/schedules
   * GET users/#/experiments
+  * GET users/#/journals
   * GET schedules?start=...&stop=...
   * GET schedules/#
   * GET schedules/find?nodecount=...&duration=...&start=...&nodetypes=...&nodes=...
