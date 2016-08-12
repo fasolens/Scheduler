@@ -82,7 +82,7 @@ only for administrators (role: admin)
   * POST users            name=&ssl= [ssl fingerprint]
   * DELETE user/#
 
-only for nodes (role: node)
+only for a node with the given id # (role: node)
 
   * GET resources/#/schedules
   * PUT resources/#       [send heartbeat]
