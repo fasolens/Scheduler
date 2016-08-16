@@ -54,7 +54,7 @@ SUM=$(($SENT + $RECEIVED))
 iptables -D OUTPUT -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT
 iptables -D INPUT  -p tcp --source-port 443 -j ACCEPT
 
-SIZE=$(container-size $CONTAINER_URL)
+#SIZE=$(container-size $CONTAINER_URL)
 
 # TODO: check if storage quota is exceeded - should never happen
 # TODO: store container size in a recoverable place
@@ -75,6 +75,6 @@ mountpoint -q $BASEDIR/$SCHEDID || {
 }
 
 JSON=$( echo '{}' | jq .deployment=$SUM )
-JSON=$( echo "$JSON" | jq ".container=\"$SIZE\"" )
+#JSON=$( echo "$JSON" | jq ".container=\"$SIZE\"" )
 
 echo $JSON >> $BASEDIR/$SCHEDID.traffic
