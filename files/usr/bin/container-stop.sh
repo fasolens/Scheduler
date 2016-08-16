@@ -35,8 +35,9 @@ if [ -d $BASEDIR/$SCHEDID ]; then
   monroe-user-experiments;
   TRAFFIC=$(cat $STATUSDIR/$SCHEDID.traffic)
 
-  for i in $(ls $USAGEDIR/monroe-$SCHEDID/*|sort); do
-      TRAFFIC=$(echo "$TRAFFIC" | jq '.'$(basename $i)=$(cat $i)'' )
+  for i in $(ls $USAGEDIR/monroe-$SCHEDID/*.rx.total|sort); do
+    MACICCID=$(basename $i | sed -e 's/\..*//g')
+    TRAFFIC=$(echo "$TRAFFIC" | jq ".interfaces.\"$MACICCID\"=$(cat $USAGEDIR/monroe-$SCHEDID/$MACICCID.total)")
   done;
   echo "$TRAFFIC" > $STATUSDIR/$SCHEDID.traffic
   echo "$TRAFFIC" > $STATUSDIR/$SCHEDID/container.stat
