@@ -352,7 +352,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
 
     def get_traffic_report(self, schedid):
         c = self.db().cursor()
-        c.execute("SELECT * FROM traffic_reports WHERE schedid=?", schedid)
+        c.execute("SELECT meter,value FROM traffic_reports WHERE schedid=?", schedid)
         report = [dict(x) for x in c.fetchall()] or None
         return report
 
@@ -493,7 +493,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
                 x.get('deployment_options', '{}'))
         if len(tasks)==1:
             for x in tasks:
-                c.execute("SELECT * FROM traffic_reports WHERE schedid=?",
+                c.execute("SELECT meter,value FROM traffic_reports WHERE schedid=?",
                           (x.get('id'),))
                 x['report']=[dict(r) for r in c.fetchall()]
         if limit > 0:
