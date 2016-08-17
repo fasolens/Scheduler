@@ -71,6 +71,7 @@ if [ -z "$MONROE_NOOP" ]; then
 fi
 
 docker run -d \
+       --name=monroe-$SCHEDID \
        --net=container:$MONROE_NOOP \
        --cap-add NET_ADMIN \
        --cap-add NET_RAW \
