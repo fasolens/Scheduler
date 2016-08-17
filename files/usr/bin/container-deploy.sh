@@ -62,7 +62,7 @@ if [ -z "$EXISTED" ]; then
 fi
 
 #check if storage quota is exceeded - should never happen
-if [ "$SUM" -gt "$QUOTA_DISK ]; then
+if [ "$SUM" -gt "$QUOTA_DISK" ]; then
   docker rmi monroe-$SCHEDID || true;
   exit $ERROR_QUOTA_EXCEEDED;
 fi
