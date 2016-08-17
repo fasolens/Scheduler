@@ -168,7 +168,8 @@ class SchedulingClient:
                 self.set_status(id, "failed; container does not exist")
             elif pro.returncode == 101:  # INSUFFICIENT_DISK_SPACE
                 self.set_status(id, "delayed; insufficient disk space")
-            # TODO detect acceptable failure codes (delayed deployment)
+            elif pro.returncode == 102:  # QUOTA_EXCEEDED
+                self.set_status(id, "failed; storage quota exceeded during deployment")
             return
 
         now  = int(time.time())

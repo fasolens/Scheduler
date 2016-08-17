@@ -9,6 +9,7 @@ mkdir -p $BASEDIR
 
 ERROR_CONTAINER_NOT_FOUND=100
 ERROR_INSUFFICIENT_DISK_SPACE=101
+ERROR_QUOTA_EXCEEDED=102
 
 # TODO: Check if we have sufficient resources to deploy this container.
 # If not, return an error code to delay deployment.
@@ -54,15 +55,16 @@ SUM=$(($SENT + $RECEIVED))
 iptables -D OUTPUT -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT
 iptables -D INPUT  -p tcp --source-port 443 -j ACCEPT
 
-#SIZE=$(container-size $CONTAINER_URL)
-
-# TODO: check if storage quota is exceeded - should never happen
-# TODO: store container size in a recoverable place
-
 #retag container image with scheduling id
 docker tag $CONTAINER_URL monroe-$SCHEDID
 if [ -z "$EXISTED" ]; then
     docker rmi $CONTAINER_URL
+fi
+
+#check if storage quota is exceeded - should never happen
+if [ "$SUM" -gt "$QUOTA_DISK ]; then
+  docker rmi monroe-$SCHEDID || true;
+  exit $ERROR_QUOTA_EXCEEDED;
 fi
 
 if [ ! -d $BASEDIR/$SCHEDID ]; then
@@ -75,6 +77,6 @@ mountpoint -q $BASEDIR/$SCHEDID || {
 }
 
 JSON=$( echo '{}' | jq .deployment=$SUM )
-#JSON=$( echo "$JSON" | jq ".container=\"$SIZE\"" )
 
 echo $JSON >> $BASEDIR/$SCHEDID.traffic
+
