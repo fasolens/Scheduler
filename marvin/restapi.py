@@ -168,7 +168,7 @@ class Schedule:
         else:
             schedid = resource[1:]
             tasks = rest_api.scheduler.get_schedule(schedid=schedid, past=True)
-            if tasks is not None:
+            if tasks is not None and len(tasks)>0:
                 tasks = tasks[0]
 
         if tasks is None:
