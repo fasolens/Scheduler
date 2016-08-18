@@ -408,7 +408,7 @@ class SchedulingClient:
                     fd.close()
         except Exception,ex:
 	    log.error("Error reading or sending experiment "\
-                      "traffic report from file %s. (%s)\n%s" % (filename, str(ex), content)
+                      "traffic report from file %s. (%s)\n%s" % (filename, str(ex), content))
 
 
 
