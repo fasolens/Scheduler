@@ -229,7 +229,7 @@ CREATE TABLE IF NOT EXISTS schedule (id TEXT PRIMARY KEY ASC,
     status TEXT NOT NULL, shared INTEGER, deployment_options TEXT,
     FOREIGN KEY (nodeid) REFERENCES nodes(id),
     FOREIGN KEY (expid) REFERENCES experiments(id));
-CREATE TABLE IF NOT EXISTS traffic_reports (schedid INTEGER,
+CREATE TABLE IF NOT EXISTS traffic_reports (schedid TEXT,
     meter TEXT NOT NULL, value INTEGER NOT NULL,
     FOREIGN KEY (schedid) REFERENCES schedule(id));
 CREATE INDEX IF NOT EXISTS k_schedid    ON traffic_reports(schedid);
