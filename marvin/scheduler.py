@@ -224,7 +224,7 @@ CREATE TABLE IF NOT EXISTS experiments (id INTEGER PRIMARY KEY ASC,
     script TEXT NOT NULL, start INTEGER NOT NULL, stop INTEGER NOT NULL,
     recurring_until INTEGER NOT NULL, options TEXT,
     FOREIGN KEY (ownerid) REFERENCES owners(id));
-CREATE TABLE IF NOT EXISTS schedule (id INTEGER PRIMARY KEY ASC,
+CREATE TABLE IF NOT EXISTS schedule (id TEXT PRIMARY KEY ASC,
     nodeid INTEGER, expid INTEGER, start INTEGER, stop INTEGER,
     status TEXT NOT NULL, shared INTEGER, deployment_options TEXT,
     FOREIGN KEY (nodeid) REFERENCES nodes(id),
@@ -938,6 +938,9 @@ SELECT DISTINCT * FROM (
                               "(NULL, ?, ?, ?, ?, ?, ?, ?)",
                               (node['id'], expid, i[0], i[1], 'defined',
                                shared, json.dumps(deployment_opts)))
+                # set scheduling ID manually, append suffix
+                c.execute("UPDATE schedule SET id = ROWID || ? "\
+                          "WHERE expid = ?", (config.get('suffix',''), expid))
 
                 now = int(time.time())
                 total_time = duration * nodecount
