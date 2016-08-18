@@ -212,7 +212,7 @@ class SchedulingClient:
         print output
         print serr
         if pro.returncode != 0:
-            log.error("Failed to set stop hook for task %i" % stophook)
+            log.error("Failed to set stop hook for task %s" % stophook)
             self.set_status(id, "failed; atq stop exit code %i" % pro.returncode)
 
         # TODO: handle tasks that failed scheduling
@@ -318,7 +318,7 @@ class SchedulingClient:
         known = jobs.values()
 
         for atid, command in jobs.iteritems():
-            taskid = int(command.split(" ")[1]) if " " in command else ""
+            taskid = command.split(" ")[1] if " " in command else ""
             if taskid not in tasks and "stop" not in command:
                 #FIXME: actually run stop hook immediately if the task is deleted
                 log.debug(
