@@ -394,21 +394,22 @@ class SchedulingClient:
         except Exception,ex:
 	    log.error("Error reading or sending experiment status. %s" % str(ex))
 
-        filename = ""
-        content  = ""
         try:
             traffiles = glob(self.statdir + "/*.traffic")
             for f in traffiles:
-                filename = f
                 schedid = f.split("/")[-1].split(".traffic")[0]
                 with open(f) as fd:
                     content = fd.read().strip()
-                    traffic = json.loads(content)
-                    self.report_traffic(schedid, traffic)
+                    try:
+                        traffic = json.loads(content)
+                        self.report_traffic(schedid, traffic)
+                    except:
+	                log.debug("Error parsing or sending experiment "\
+                            "traffic report from file %s. (%s)\n%s" % (f, str(ex), content))
+
                     fd.close()
         except Exception,ex:
-	    log.error("Error reading or sending experiment "\
-                      "traffic report from file %s. (%s)\n%s" % (filename, str(ex), content))
+	    log.error("Error fetching traffic report. (%s)", ex) 
 
 
 
