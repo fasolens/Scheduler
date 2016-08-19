@@ -78,5 +78,5 @@ mountpoint -q $BASEDIR/$SCHEDID || {
 
 JSON=$( echo '{}' | jq .deployment=$SUM )
 
-echo $JSON >> $BASEDIR/$SCHEDID.traffic
+echo $JSON > $BASEDIR/$SCHEDID.traffic
 
