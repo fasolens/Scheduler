@@ -403,7 +403,7 @@ class SchedulingClient:
                     try:
                         traffic = json.loads(content)
                         self.report_traffic(schedid, traffic)
-                    except:
+                    except Exception,ex:
 	                log.debug("Error parsing or sending experiment "\
                             "traffic report from file %s. (%s)\n%s" % (f, str(ex), content))
 
