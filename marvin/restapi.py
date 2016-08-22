@@ -204,7 +204,8 @@ class Schedule:
             return error("Wrong user to updated this status (%s)" % name)
         if 'status' in params:
             status = params.get('status','').strip()
-            if status in scheduler.TASK_STATUS_CODES:
+            code = status.split(";")[0]
+            if code in scheduler.TASK_STATUS_CODES:
                 result, errmsg = rest_api.scheduler.set_status(
                     schedid=schedid,
                     status=status)
@@ -215,7 +216,7 @@ class Schedule:
                     return error(errmsg)
             else:
                 web.ctx.status = '400 Bad Request'
-                return error("Unknown status code.")
+                return error("Unknown status code (%s)." % status)
         elif 'traffic' in params:
             try:
                 traffic = json.loads(params.get('traffic',''))
