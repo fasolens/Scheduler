@@ -468,5 +468,5 @@ class RestAPI:
     def get_user(self, ctx):
         user = self.scheduler.get_users(ssl=self.get_fingerprint(web.ctx))
         if user is None or len(user) == 0:
-            return None
+            return None, None, None
         return user[0]['id'], user[0]['role'], user[0]['name']
