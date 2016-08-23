@@ -28,9 +28,9 @@ fi
 
 if [ -d $BASEDIR/$SCHEDID ]; then
   if [ ! -z "$CID" ]; then
-    docker logs -t $CID &> $BASEDIR/$SCHEDID/container.log;
+    docker logs -t $CID &> $STATUSDIR/$SCHEDID/container.log;
   else
-    echo "CID not found for $CONTAINER." > $BASEDIR/$SCHEDID/container.log;
+    echo "CID not found for $CONTAINER." > $STATUSDIR/$SCHEDID/container.log;
   fi
   monroe-user-experiments;
   TRAFFIC=$(cat $STATUSDIR/$SCHEDID.traffic)
@@ -81,6 +81,6 @@ if [ -z "$(ls -A $BASEDIR/$SCHEDID/ 2>/dev/null)" ]; then
   rm     $BASEDIR/${SCHEDID}.disk     2>/dev/null
   rm     $BASEDIR/${SCHEDID}.counter  2>/dev/null
   rm -r  $USAGEDIR/monroe-${SCHEDID}  2>/dev/null
-  cp     $BASEDIR/${SCHEDID}.traffic  $BASEDIR/${SCHEDID}.traffic_ 2>/dev/null
+  cp     $STATUSDIR/${SCHEDID}.traffic  $STATUSDIR/${SCHEDID}.traffic_ 2>/dev/null
 fi
 rm     $BASEDIR/${SCHEDID}.pid      2>/dev/null

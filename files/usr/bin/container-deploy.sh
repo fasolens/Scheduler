@@ -5,6 +5,7 @@ SCHEDID=$1
 CONTAINER_URL=$2 # may be empty, just for convenience of starting manually.
 
 BASEDIR=/experiments/user
+STATUSDIR=$BASEDIR
 mkdir -p $BASEDIR
 
 ERROR_CONTAINER_NOT_FOUND=100
@@ -78,5 +79,5 @@ mountpoint -q $BASEDIR/$SCHEDID || {
 
 JSON=$( echo '{}' | jq .deployment=$SUM )
 
-echo $JSON > $BASEDIR/$SCHEDID.traffic
+echo $JSON > $STATUSDIR/$SCHEDID.traffic
 
