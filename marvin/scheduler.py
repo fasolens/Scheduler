@@ -649,7 +649,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         if nodes is not None and len(nodes) > 0:
             preselection = " AND n.id IN ('" + "', '".join(nodes) + "') \n"
 
-        query = "\nSELECT DISTINCT n.id AS id, MIN(i.quota_value) AS min_quota"\
+        query = "\nSELECT n.id AS id, MIN(i.quota_value) AS min_quota"\
                 "  FROM nodes n, node_interface i \n"\
                 "  WHERE n.status = ? AND n.id = i.nodeid \n"
         query += preselection
@@ -666,6 +666,7 @@ AND n.id NOT IN (
     SELECT DISTINCT nodeid FROM schedule s
     WHERE shared = 0 AND NOT ((s.stop + ? < ?) OR (s.start - ? > ?))
 )
+GROUP BY n.id
 ORDER BY min_quota DESC, n.heartbeat DESC
                  """
         c.execute(query, [NODE_ACTIVE] +
