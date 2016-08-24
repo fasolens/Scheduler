@@ -30,9 +30,14 @@ class SchedulerTestCase(unittest.TestCase):
             c = self.sch.db().cursor()
             c.execute("INSERT OR IGNORE INTO nodes VALUES (?, ?, ?, ?)",
                   ('1', 'test-node', 'active', 0))
+            c.execute("INSERT OR IGNORE INTO nodes VALUES (?, ?, ?, ?)",
+                  ('2', 'test-node 2', 'active', 0))
             c.execute("INSERT OR REPLACE INTO node_interface "
                   "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                   ('1', 'a', 'ab', 'abc', 'abcd', 0, 0, 0, 0, 0))
+            c.execute("INSERT OR REPLACE INTO node_interface "
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  ('2', 'a', 'ab', 'abc', 'abcd', 0, 0, 0, 0, 0))
             self.sch.db().commit()
             self.sch.set_node_types(1, 'status:test')
 
@@ -183,7 +188,7 @@ class SchedulerTestCase(unittest.TestCase):
 
     def test_15_reports(self):
         r = self.sch.get_schedule(schedid=1)
-        self.assertEqual(r[0]['report'], [])
+        self.assertEqual(r[0]['report'], {})
 
     def test_21_delete_experiment(self):
         r = self.sch.delete_experiment(99)
