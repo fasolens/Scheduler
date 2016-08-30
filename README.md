@@ -50,6 +50,7 @@ for everyone:
 
   * GET version
   * GET backend/auth [verify SSL certificate]
+  * GET backend/activity [show activity statistics] 
 
 for all authenticated clients:
 
