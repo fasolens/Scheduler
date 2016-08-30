@@ -1,4 +1,5 @@
 #!/bin/sh
 
-systemctl enable marvind 
-systemctl start  marvind
+systemctl enable marvind
+systemctl daemon-reload
+systemctl restart marvind
