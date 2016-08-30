@@ -25,10 +25,12 @@ log.setLevel(config['log']['level'])
 
 
 API_VERSION = "1.0"
-PREFETCH_LIMIT = 24 * 3600
 # NOTE: major versions will be reflected in the URL
 #       minor versions will increase after first deployment, and should not
 #       break compatibility with prior minor versions.
+
+PREFETCH_COUNT = 3         # number of schedules returned to URLs (default)
+PREFETCH_LIMIT = 24 * 3600 # maximum prefetch time window (fixed)
 
 
 def dumps(data):
@@ -123,7 +125,7 @@ class Resource:
                 return error("Wrong user to update this status. (%s)" % name)
             now = int(time.time())
             rest_api.scheduler.set_heartbeat(nodeid, now)
-            limit = int(data.get("limit",0))
+            limit = int(data.get("limit", PREFETCH_COUNT))
             data = rest_api.scheduler.get_schedule(nodeid=nodeid, limit=limit,
                                                    stop=now + PREFETCH_LIMIT)
             return dumps(data)
