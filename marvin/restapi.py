@@ -404,13 +404,16 @@ class User:
 class Backend:
 
     def GET(self, action):
-        if action == "/auth":
-            verified = web.ctx.env.get('HTTP_VERIFIED', None)
-            fingerprint = web.ctx.env.get('HTTP_SSL_FINGERPRINT', '')
-            user = rest_api.scheduler.get_users(ssl=fingerprint)
+        verified = web.ctx.env.get('HTTP_VERIFIED', None)
+        fingerprint = web.ctx.env.get('HTTP_SSL_FINGERPRINT', '')
+        user = rest_api.scheduler.get_users(ssl=fingerprint)
 
-            if user is None or user[0]["role"] == scheduler.ROLE_INVALID:
-                web.ctx.status = '401 Unauthorized'
+        if user is None or user[0]["role"] == scheduler.ROLE_INVALID:
+            web.ctx.status = '401 Unauthorized'
+            # send auth report anyway, or error on other paths
+
+        if action == "/auth":
+
             if user is not None:
                 user = user[0]
 
@@ -420,6 +423,12 @@ class Backend:
                          "user": user
                          })
 
+        elif action == "/activity":
+            if user is None or user[0]["role"] == scheduler.ROLE_INVALID:
+                return error("Not authorized.")
+            else:
+                activity = rest_api.scheduler.get_activity()
+                return dumps(activity)
         else:
             web.ctx.status = '404 Not Found'
             return error("Unknown request")

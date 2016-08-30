@@ -336,6 +336,32 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
     def set_time_quota(self, userid, value):
         return self._set_quota(userid, value, 'quota_owner_time')
 
+    def get_activity(self):
+        activity = {}
+        now = int(time.time())
+        c = self.db().cursor()
+        c.execute("SELECT role, count(*) as count FROM owners GROUP BY role")
+        users = dict([(x[0],x[1]) for x in c.fetchall()])
+        c.execute("SELECT status, count(*) as count FROM nodes GROUP BY status")
+        activity["users"]=users
+        nodes = dict([(x[0],x[1]) for x in c.fetchall()])
+        c.execute("SELECT count(*) as count FROM nodes WHERE heartbeat > ? - 120", (now,))
+        nodes["2 min"]=c.fetchone()[0]
+        c.execute("SELECT count(*) as count FROM nodes WHERE heartbeat > ? - 300", (now,))
+        nodes["5 min"]=c.fetchone()[0]
+        c.execute("SELECT count(*) as count FROM nodes WHERE heartbeat > ? - 3600", (now,))
+        nodes["1 h"]=c.fetchone()[0]
+        c.execute("SELECT count(*) as count FROM nodes WHERE heartbeat > ? - 86400", (now,))
+        nodes["1 d"]=c.fetchone()[0]
+        activity["nodes"]=nodes
+        tasks={}
+        c.execute("SELECT count(*) as count FROM schedules WHERE start > ?", (now,))
+        tasks["future"]=c.fetchone()[0]
+        c.execute("SELECT count(*) as count FROM schedules WHERE start < ? AND stop > ?", (now,now))
+        tasks["current"]=c.fetchone()[0]
+        activity["tasks"]=tasks
+        return activity
+
     def get_quota_journal(self, userid=None, iccid=None, nodeid=None, maxage=0):
         c = self.db().cursor()
         query = "SELECT ownerid, new_value, quota, reason, timestamp " \
