@@ -353,13 +353,13 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         nodes["1 h"]=c.fetchone()[0]
         c.execute("SELECT count(*) as count FROM nodes WHERE heartbeat > ? - 86400", (now,))
         nodes["1 d"]=c.fetchone()[0]
-        activity["nodes"]=nodes
+        activity["resources"]=nodes
         tasks={}
-        c.execute("SELECT count(*) as count FROM schedules WHERE start > ?", (now,))
+        c.execute("SELECT count(*) as count FROM schedule WHERE start > ?", (now,))
         tasks["future"]=c.fetchone()[0]
-        c.execute("SELECT count(*) as count FROM schedules WHERE start < ? AND stop > ?", (now,now))
+        c.execute("SELECT count(*) as count FROM schedule WHERE start < ? AND stop > ?", (now,now))
         tasks["current"]=c.fetchone()[0]
-        activity["tasks"]=tasks
+        activity["schedules"]=tasks
         return activity
 
     def get_quota_journal(self, userid=None, iccid=None, nodeid=None, maxage=0):
