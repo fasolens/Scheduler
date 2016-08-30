@@ -366,6 +366,7 @@ class SchedulingClient:
                 continue
             else:
                 log.debug("unknown task: %s" % schedid)
+                # TODO: implement filter to only get schedules assigned to this node
                 result = requests.get(
                     config[
                         'rest-server'] +
