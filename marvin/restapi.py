@@ -252,8 +252,12 @@ class Experiment:
         if task in ["", "/"]:
             tasks = rest_api.scheduler.get_experiments()
         else:
-            expid = task[1:]
-            tasks = rest_api.scheduler.get_experiments(expid=expid)
+            path = task.split("/")
+            expid = path[1]
+            schedid = None
+            if len(path)>3 and path[2]=="schedule":
+                schedid=path[3]
+            tasks = rest_api.scheduler.get_experiments(expid=expid, schedid=schedid)
             if tasks is not None:
                 tasks = tasks[0]
 

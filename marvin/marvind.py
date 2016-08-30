@@ -366,14 +366,9 @@ class SchedulingClient:
                 continue
             else:
                 log.debug("unknown task: %s" % schedid)
-                # TODO: implement filter to only get schedules assigned to this node
-                result = requests.get(
-                    config[
-                        'rest-server'] +
-                    '/experiments/' +
-                    expid,
-                    cert=self.cert,
-                    verify=False)
+                result = requests.get("%s/experiments/%s/schedule/%s" % \
+                    (config['rest-server'], expid, schedid),
+                    cert=self.cert, verify=False)
                 task = result.json()
                 try:
                     self.add_task(task, sched)

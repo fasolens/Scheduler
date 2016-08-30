@@ -569,7 +569,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
                 return False, "Status %s cannot be reset." % str(oldstat)
         return False, "Unknown status code (%s)." % str(status)
 
-    def get_experiments(self, expid=None, userid=None, nodeid=None):
+    def get_experiments(self, expid=None, userid=None, schedid=None):
         c = self.db().cursor()
         if expid is not None:
             c.execute(
@@ -586,10 +586,12 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         taskrows = c.fetchall()
         experiments = [dict(x) for x in taskrows]
         for i, task in enumerate(experiments):
-            c.execute(
-                "SELECT id, nodeid, status, start, stop FROM schedule WHERE expid=?",
-                (experiments[i]['id'],
-                 ))
+            query="SELECT id, nodeid, status, start, stop FROM schedule WHERE expid=?"
+            if schedid is not None:
+                query += " AND id=?"
+                c.execute(query, (experiments[i]['id'], schedid))
+            else:
+                c.execute(query, (experiments[i]['id'],))
             result = [dict(x) for x in c.fetchall()]
             schedules = dict([(
                                x['id'],
