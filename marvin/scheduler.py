@@ -576,7 +576,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
                 return False, "Status %s cannot be reset." % str(oldstat)
         return False, "Unknown status code (%s)." % str(status)
 
-    def get_experiments(self, expid=None, userid=None, schedid=None):
+    def get_experiments(self, expid=None, userid=None, nodeid=None, schedid=None):
         c = self.db().cursor()
         if expid is not None:
             c.execute(
