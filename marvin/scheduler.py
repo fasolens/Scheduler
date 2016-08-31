@@ -115,6 +115,8 @@ class Scheduler:
             status = NODE_ACTIVE if node["Status"] == u'DEPLOYED' \
                 or node["Status"] == u'TESTING' \
                 else NODE_DISABLED
+            if node.get("ProjectName") in ["Celerway", "Monroe"]:
+                status = NODE_DISABLED
             c.execute(
                 "UPDATE nodes SET hostname = ?, status = ? WHERE id = ?",
                 (node.get("Hostname"),
