@@ -362,7 +362,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         c.execute("SELECT count(*) as count FROM schedule WHERE start < ? AND stop > ?", (now,now))
         tasks["current"]=c.fetchone()[0]
         c.execute("SELECT DISTINCT e.ownerid FROM schedule s, experiments e WHERE s.expid=e.id AND s.stop > ? - 604800 GROUP BY e.ownerid", (now,))
-        distinct=c.fetchone()
+        distinct=c.fetchall()
         tasks["distinct active users (7d)"]=len(distinct) if distinct is not None else 0;
         activity["schedules"]=tasks
         return activity
