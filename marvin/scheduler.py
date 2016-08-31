@@ -353,7 +353,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         nodes["1 h"]=c.fetchone()[0]
         c.execute("SELECT count(*) as count FROM nodes WHERE heartbeat > ? - 86400", (now,))
         nodes["1 d"]=c.fetchone()[0]
-        c.execute("SELECT id FROM nodes WHERE heartbeat > ? - 604800 and heartbeat < ? - 86400", (now,))
+        c.execute("SELECT id FROM nodes WHERE heartbeat > ? - 604800 and heartbeat < ? - 86400", (now,now))
         nodes["dropouts 7d-1d"]=[x[0] for x in c.fetchall()]
         activity["resources"]=nodes
         tasks={}
