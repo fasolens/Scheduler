@@ -170,6 +170,8 @@ class SchedulingClient:
                 self.set_status(id, "delayed; insufficient disk space")
             elif pro.returncode == 102:  # QUOTA_EXCEEDED
                 self.set_status(id, "failed; storage quota exceeded during deployment")
+            elif pro.returncode == 103:  # QUOTA_EXCEEDED
+                self.set_status(id, "delayed; cannot deploy while node is in maintenance mode")
             return
 
         now  = int(time.time())
