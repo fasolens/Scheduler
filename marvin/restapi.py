@@ -125,6 +125,10 @@ class Resource:
                 return error("Wrong user to update this status. (%s)" % name)
             now = int(time.time())
             rest_api.scheduler.set_heartbeat(nodeid, now)
+
+            if "maintenance" in data.keys():
+                rest_api.scheduler.set_maintenance(nodeid, data['maintenance'])
+
             limit = int(data.get("limit", PREFETCH_COUNT))
             data = rest_api.scheduler.get_schedule(nodeid=nodeid, limit=limit,
                                                    stop=now + PREFETCH_LIMIT)

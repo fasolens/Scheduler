@@ -71,8 +71,10 @@ POLICY_TASK_MAX_TRAFFIC = 500 * 1000000              # 500 MB per node TODO
 NODE_MISSING = 'missing'  # existed in the past, but no longer listed
 NODE_DISABLED = 'disabled'  # set to STORAGE or other in the inventory
 NODE_ACTIVE = 'active'  # set to DEPLOYED (or TESTING) in the inventory
+NODE_MAINTENANCE = 'maintenance'  # node is in MAINTENANCE mode
 
-NODE_STATUS_CODES = [NODE_MISSING, NODE_DISABLED, NODE_ACTIVE]
+NODE_STATUS_CODES = [NODE_MISSING, NODE_DISABLED,
+                     NODE_ACTIVE, NODE_MAINTENANCE]
 
 ROLE_USER = 'user'
 ROLE_NODE = 'node'
@@ -303,6 +305,15 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
             log.warning(er.message)
             return "Error updating node."
 
+    def set_maintenance(self, nodeid, flag):
+        c = self.db().cursor()
+        # do not set if node is marked as DISABLED/MISSING, reset to ACTIVE
+        maintenance = NODE_MAINTENANCE if flag == '1' else NODE_ACTIVE
+        c.execute("UPDATE nodes SET status=? WHERE id=? AND "\
+                  "(status = ? OR status = ?)",
+                  (maintenance, nodeid, NODE_ACTIVE, NODE_MAINTENANCE))
+        self.db.commit()
+
     def check_quotas(self):
         now = int(time.time())
         c = self.db().cursor()
@@ -381,10 +392,10 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
             c.execute(query + " AND iccid=?", (maxage, iccid))
         elif nodeid:
             c.execute("""SELECT j.iccid, j.new_value, j.reason, j.timestamp
-                         FROM quota_journal j, node_interface i WHERE 
+                         FROM quota_journal j, node_interface i WHERE
                          j.iccid = i.iccid AND i.nodeid = ? AND timestamp > ?""",
                       (nodeid, maxage))
-        journal = [dict(x) for x in c.fetchall()] 
+        journal = [dict(x) for x in c.fetchall()]
         return journal
 
     def get_traffic_report(self, schedid):
