@@ -312,7 +312,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         c.execute("UPDATE nodes SET status=? WHERE id=? AND "\
                   "(status = ? OR status = ?)",
                   (maintenance, nodeid, NODE_ACTIVE, NODE_MAINTENANCE))
-        self.db.commit()
+        self.db().commit()
 
     def check_quotas(self):
         now = int(time.time())
