@@ -71,6 +71,7 @@ for all authenticated clients:
   * GET schedules/find?nodecount=...&duration=...&start=...&nodetypes=...&nodes=...
   * GET experiments
   * GET experiments/#
+  * GET experiments/#/schedule/#
 
 only for users (role: user)
 
