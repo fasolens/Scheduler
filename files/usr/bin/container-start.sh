@@ -25,6 +25,14 @@ NOERROR_CONTAINER_IS_RUNNING=0
 ERROR_CONTAINER_DID_NOT_START=10
 ERROR_NETWORK_CONTEXT_NOT_FOUND=11
 ERROR_IMAGE_NOT_FOUND=12
+ERROR_MAINTENANCE_MODE=13
+
+# Check for maintenance mode
+MAINTENANCE=$(cat /.maintenance || echo 0)
+if [ $MAINTENANCE -eq 1 ]; then
+   echo 'failed; node is in maintenance mode.' > $STATUSDIR/$SCHEDID.status
+   exit $ERROR_MAINTENANCE_MODE;
+fi
 
 # make sure network namespaces are set up
 mkdir -p /var/run/netns

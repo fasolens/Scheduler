@@ -11,8 +11,15 @@ mkdir -p $BASEDIR
 ERROR_CONTAINER_NOT_FOUND=100
 ERROR_INSUFFICIENT_DISK_SPACE=101
 ERROR_QUOTA_EXCEEDED=102
+ERROR_MAINTENANCE_MODE=103
 
-# TODO: Check if we have sufficient resources to deploy this container.
+# Check for maintenance mode
+MAINTENANCE=$(cat /.maintenance || echo 0)
+if [ $MAINTENANCE -eq 1 ]; then
+  exit $ERROR_MAINTENANCE_MODE; 
+fi
+
+# Check if we have sufficient resources to deploy this container.
 # If not, return an error code to delay deployment.
 
 if [ -f $BASEDIR/$SCHEDID.conf ]; then
