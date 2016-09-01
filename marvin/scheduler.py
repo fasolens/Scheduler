@@ -608,19 +608,25 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         taskrows = c.fetchall()
         experiments = [dict(x) for x in taskrows]
         for i, task in enumerate(experiments):
-            query="SELECT id, nodeid, status, start, stop FROM schedule WHERE expid=?"
             if schedid is not None:
-                query += " AND id=?"
+                query="SELECT id, nodeid, status, start, stop FROM schedule WHERE expid=? AND id=?"
                 c.execute(query, (experiments[i]['id'], schedid))
-            else:
-                c.execute(query, (experiments[i]['id'],))
-            result = [dict(x) for x in c.fetchall()]
-            schedules = dict([(
+                result = [dict(x) for x in c.fetchall()]
+                schedules = dict([(
                                x['id'],
                                {"status": x['status'], "nodeid": x['nodeid'],
                                 "start": x['start'], "stop": x['stop']}
                               ) for x in result])
-            experiments[i]['schedules'] = schedules
+                experiments[i]['schedules'] = schedules
+            else:
+                query="SELECT status, count(*) FROM schedule WHERE expid=? GROUP BY status"
+                c.execute(query, (experiments[i]['id'],))
+                result = [dict(x) for x in c.fetchall()]
+                experiments[i]['summary'] = result
+                query="SELECT id FROM schedule WHERE expid=?"
+                c.execute(query, (experiments[i]['id'],))
+                result = list(c.fetchall())
+                experiments[i]['schedules'] = result
             experiments[i]['options'] = json.loads(task.get('options', '{}'))
             if 'recurring_until' in experiments[i]:
                 del experiments[i]['recurring_until']
