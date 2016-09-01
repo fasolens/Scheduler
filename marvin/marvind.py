@@ -337,7 +337,7 @@ class SchedulingClient:
             if code in ['failed', 'finished', 'stopped', 'aborted', 'canceled']:
                 log.debug(
                     "Not scheduling finished or aborted task "
-                    "(Taskid %s, scheduling id %s)" % (expid, schedid))
+                    "(Expid %s, scheduling id %s)" % (expid, schedid))
                 continue
 
             starthook = self.starthook + " " + schedid
