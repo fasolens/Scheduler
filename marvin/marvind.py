@@ -410,6 +410,14 @@ class SchedulingClient:
 	    log.error("Error fetching traffic report. (%s)", ex) 
 
 
+    def get_maintenance_mode(self):
+        try:
+            fd = open("/.maintenance","r")
+            if fd.read().strip()=="1":
+                return "1"
+        except:
+            pass
+        return "0"
 
     def start(self):
         self.starthook = config['hooks']['start']
@@ -439,7 +447,8 @@ class SchedulingClient:
                         'rest-server'] + "/resources/" + str(self.ID)
                     result = requests.put(
                         heartbeat,
-                        data={"limit": PREFETCH_LIMIT},
+                        data={"limit": PREFETCH_LIMIT,
+                              "maintenance": self.get_maintenance_mode()},
                         cert=self.cert,
                         verify=False)
                     if result.status_code == 200:
