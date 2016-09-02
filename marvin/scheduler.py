@@ -609,8 +609,12 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         experiments = [dict(x) for x in taskrows]
         for i, task in enumerate(experiments):
             if schedid is not None:
-                query="SELECT id, nodeid, status, start, stop FROM schedule WHERE expid=? AND id=?"
-                c.execute(query, (experiments[i]['id'], schedid))
+                if schedid == -1: # return all scheduling results
+                    query="SELECT id, nodeid, status, start, stop FROM schedule WHERE expid=?"
+                    c.execute(query, (experiments[i]['id'], schedid))
+                else:
+                    query="SELECT id, nodeid, status, start, stop FROM schedule WHERE expid=? AND id=?"
+                    c.execute(query, (experiments[i]['id'], schedid))
                 result = [dict(x) for x in c.fetchall()]
                 schedules = dict([(
                                x['id'],
