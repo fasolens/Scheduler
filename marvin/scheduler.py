@@ -622,15 +622,15 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
                                 "start": x['start'], "stop": x['stop']}
                               ) for x in result])
                 experiments[i]['schedules'] = schedules
-            else:
-                query="SELECT status, count(*) FROM schedule WHERE expid=? GROUP BY status"
-                c.execute(query, (experiments[i]['id'],))
-                result = dict([(x[0],x[1]) for x in c.fetchall()])
-                experiments[i]['summary'] = result
-                query="SELECT id FROM schedule WHERE expid=?"
-                c.execute(query, (experiments[i]['id'],))
-                result = [x[0] for x in c.fetchall()]
-                experiments[i]['schedules'] = result
+            #else:
+            #    query="SELECT status, count(*) FROM schedule WHERE expid=? GROUP BY status"
+            #    c.execute(query, (experiments[i]['id'],))
+            #    result = dict([(x[0],x[1]) for x in c.fetchall()])
+            #    experiments[i]['summary'] = result
+            #    query="SELECT id FROM schedule WHERE expid=?"
+            #    c.execute(query, (experiments[i]['id'],))
+            #    result = [x[0] for x in c.fetchall()]
+            #    experiments[i]['schedules'] = result
             experiments[i]['options'] = json.loads(task.get('options', '{}'))
             if 'recurring_until' in experiments[i]:
                 del experiments[i]['recurring_until']
