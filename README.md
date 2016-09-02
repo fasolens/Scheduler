@@ -70,8 +70,9 @@ for all authenticated clients:
   * GET schedules/#
   * GET schedules/find?nodecount=...&duration=...&start=...&nodetypes=...&nodes=...
   * GET experiments
-  * GET experiments/#
-  * GET experiments/#/schedule/#
+  * GET experiments/#             (returns experiment summary)
+  * GET experiments/#/schedules   (returns detailed task status)
+  * GET experiments/#/schedules/#
 
 only for users (role: user)
 
