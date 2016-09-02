@@ -611,7 +611,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
             if schedid is not None:
                 if schedid == -1: # return all scheduling results
                     query="SELECT id, nodeid, status, start, stop FROM schedule WHERE expid=?"
-                    c.execute(query, (experiments[i]['id'], schedid))
+                    c.execute(query, (experiments[i]['id'],))
                 else:
                     query="SELECT id, nodeid, status, start, stop FROM schedule WHERE expid=? AND id=?"
                     c.execute(query, (experiments[i]['id'], schedid))
