@@ -443,15 +443,16 @@ class SchedulingClient:
         while self.running.is_set():
             try:
                 while self.running.is_set():
+                    maintenance = self.get_maintenance_mode()
                     heartbeat = config[
                         'rest-server'] + "/resources/" + str(self.ID)
                     result = requests.put(
                         heartbeat,
                         data={"limit": PREFETCH_LIMIT,
-                              "maintenance": self.get_maintenance_mode()},
+                              "maintenance": maintenance},
                         cert=self.cert,
                         verify=False)
-                    if result.status_code == 200:
+                    if result.status_code == 200 and maintenance != "1":
                         self.update_schedule(result.json())
                         self.post_status()
                     else:
