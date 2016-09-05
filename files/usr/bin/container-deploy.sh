@@ -76,7 +76,7 @@ fi
 
 if [ ! -d $BASEDIR/$SCHEDID ]; then
     mkdir -p $BASEDIR/$SCHEDID;
-    dd if=/dev/zero of=$BASEDIR/${SCHEDID}.disk bs=1000 count=$QUOTA_DISK;
+    dd if=/dev/zero of=$BASEDIR/${SCHEDID}.disk bs=1000 count=$QUOTA_DISK_KB;
     mkfs.ext4 $BASEDIR/${SCHEDID}.disk -F -L $SCHEDID;
 fi
 mountpoint -q $BASEDIR/$SCHEDID || {
