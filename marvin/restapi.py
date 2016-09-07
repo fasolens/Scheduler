@@ -379,7 +379,7 @@ class User:
         data = web.input()
         if "name" in data and "ssl" in data and "role" in data:
             userid, errmsg = rest_api.scheduler.create_user(
-                data['name'], data['ssl'], data['role'])
+                data['name'].strip(), data['ssl'].strip(), data['role'].strip())
             if userid is not None:
                 web.ctx.status = '201 Created'
                 web.header('Location', "/user/%i" % userid)
