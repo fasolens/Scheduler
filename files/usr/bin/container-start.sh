@@ -89,6 +89,9 @@ docker run -d \
        $TSTAT_DISK \
        $CONTAINER
 
+# sync usage monitoring
+/usr/bin/usage /monroe/usage/netns /tmp/metadata-usage-monroe eth0 wlan0 wlan1 usb0 usb1 usb2 || true
+
 # CID: the runtime container ID
 CID=$(docker ps --no-trunc | grep $CONTAINER | awk '{print $1}' | head -n 1)
 
