@@ -236,7 +236,7 @@ CREATE TABLE IF NOT EXISTS schedule (id TEXT PRIMARY KEY ASC,
 CREATE TABLE IF NOT EXISTS traffic_reports (schedid TEXT,
     meter TEXT NOT NULL, value INTEGER NOT NULL,
     FOREIGN KEY (schedid) REFERENCES schedule(id));
-CREATE INDEX IF NOT EXISTS k_schedid    ON traffic_reports(schedid);
+CREATE UNIQUE INDEX IF NOT EXISTS k_all ON traffic_reports(schedid, meter);
 CREATE INDEX IF NOT EXISTS k_iccid      ON node_interface(iccid);
 CREATE TABLE IF NOT EXISTS quota_journal (timestamp INTEGER,
     quota TEXT NOT NULL, ownerid INTEGER, iccid TEXT,
@@ -561,9 +561,9 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
           c.execute("INSERT OR REPLACE INTO traffic_reports VALUES (?,?,?)",
                     (schedid, 'results', traffic['results']))
         if 'interfaces' in traffic:
-            for iccid, value in traffic['interfaces'].iteritems():
-                c.execute("INSERT OR REPLACE INTO traffic_reports VALUES (?,?,?)",
-                          (schedid, iccid, value))
+          for iccid, value in traffic['interfaces'].iteritems():
+              c.execute("INSERT OR REPLACE INTO traffic_reports VALUES (?,?,?)",
+                        (schedid, iccid, value))
         if traffic.get('final',False):
             #TODO: restore quotas
             pass
