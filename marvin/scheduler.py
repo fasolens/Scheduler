@@ -309,9 +309,11 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         c = self.db().cursor()
         # do not set if node is marked as DISABLED/MISSING, reset to ACTIVE
         maintenance = NODE_MAINTENANCE if flag == '1' else NODE_ACTIVE
-        c.execute("UPDATE nodes SET status=? WHERE id=? AND "\
-                  "(status = ? OR status = ?)",
-                  (maintenance, nodeid, NODE_ACTIVE, NODE_MAINTENANCE))
+        c.execute("SELECT status FROM nodes WHERE id=?", (nodeid,))
+        current = c.fetchone()[0]
+        if current != maintenance:
+            c.execute("UPDATE nodes SET status=? WHERE id=?",
+                      (maintenance, nodeid))
         self.db().commit()
 
     def check_quotas(self):
