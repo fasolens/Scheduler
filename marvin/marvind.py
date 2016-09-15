@@ -455,6 +455,8 @@ class SchedulingClient:
                     if result.status_code == 200 and maintenance != "1":
                         self.update_schedule(result.json())
                         self.post_status()
+                    elif maintenance == "1":
+                        log.debug("Not deploying in maintenance mode.")
                     else:
                         log.debug(
                             "Scheduling server is not available. (Status %s)" %
