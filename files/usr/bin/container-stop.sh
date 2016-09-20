@@ -39,8 +39,10 @@ if [ -d $BASEDIR/$SCHEDID ]; then
     MACICCID=$(basename $i | sed -e 's/\..*//g')
     TRAFFIC=$(echo "$TRAFFIC" | jq ".interfaces.\"$MACICCID\"=$(cat $USAGEDIR/monroe-$SCHEDID/$MACICCID.total)")
   done;
-  echo "$TRAFFIC" > $STATUSDIR/$SCHEDID.traffic
-  echo "$TRAFFIC" > $STATUSDIR/$SCHEDID/container.stat
+  if [ ! -z "$TRAFFIC" ]; then
+    echo "$TRAFFIC" > $STATUSDIR/$SCHEDID.traffic
+    echo "$TRAFFIC" > $STATUSDIR/$SCHEDID/container.stat
+  fi
 fi
 
 if [ -z "$STATUS" ]; then
