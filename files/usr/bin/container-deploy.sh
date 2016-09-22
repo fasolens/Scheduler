@@ -52,15 +52,13 @@ iptables -I OUTPUT 1 -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACC
 iptables -Z OUTPUT 1
 iptables -I INPUT 1 -p tcp --source-port 443 -j ACCEPT
 iptables -Z INPUT 1
+trap "iptables -D OUTPUT -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT; iptables -D INPUT  -p tcp --source-port 443 -j ACCEPT" EXIT
 
 docker pull $CONTAINER_URL || exit $ERROR_CONTAINER_NOT_FOUND
 
 SENT=$(iptables -vxL OUTPUT 1 | awk '{print $2}')
 RECEIVED=$(iptables -vxL INPUT 1 | awk '{print $2}')
 SUM=$(($SENT + $RECEIVED))
-
-iptables -D OUTPUT -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT
-iptables -D INPUT  -p tcp --source-port 443 -j ACCEPT
 
 #retag container image with scheduling id
 docker tag $CONTAINER_URL monroe-$SCHEDID
