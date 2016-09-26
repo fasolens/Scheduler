@@ -718,13 +718,20 @@ AND n.id NOT IN (
     SELECT DISTINCT nodeid FROM schedule s
     WHERE shared = 0 AND NOT ((s.stop + ? < ?) OR (s.start - ? > ?))
 )
+AND n.heartbeat > ?
 GROUP BY n.id
 ORDER BY min_quota DESC, n.heartbeat DESC
                  """
+        now = int(time.time())
+        alive_after = now - 48 * 3600
+        if (abs(start-now) < 1200) or (start==0):
+          alive_after = now - 600
+
         c.execute(query, [NODE_ACTIVE] +
                   list(chain.from_iterable(type_require)) +
                   list(chain.from_iterable(type_reject)) +
-                  [POLICY_TASK_PADDING, start, POLICY_TASK_PADDING, stop])
+                  [POLICY_TASK_PADDING, start, POLICY_TASK_PADDING, stop,
+                   alive_after])
 
         noderows = c.fetchall()
         nodes = [dict(x) for x in noderows if x[1] is not None]
