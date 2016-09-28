@@ -20,6 +20,9 @@ fi
 
 CID=$( docker ps -a | grep $CONTAINER | awk '{print $1}' )
 
+# finalize accounting
+/usr/bin/usage-defaults
+
 if [ $(docker inspect -f "{{.State.Running}}" $CID 2>/dev/null) ]; then
   docker stop --time=10 $CID;
 else
