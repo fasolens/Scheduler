@@ -178,7 +178,8 @@ class Scheduler:
         id = get_ident() or threading.current_thread().ident
         if refresh or not self.connections.get(id):
             log.debug("Connection opened for thread id %s" % id)
-            self.connections[id] = db.connect(config['database'])
+            self.connections[id] = db.connect(config['database'],
+                                              timeout=30.0)
             self.connections[id].row_factory = db.Row
         return self.connections[id]
 
@@ -603,7 +604,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         elif nodeid is not None:
             c.execute(
                 "SELECT t.id, t.name, t.ownerid, t.type, t.script, t.options "
-                "FROM experiments t, schedule s WHERE s.expid = t.id AND "
+                "FROM schedule s, experiments t WHERE s.expid = t.id AND "
                 "s.nodeid=?", (nodeid,))
         else:
             c.execute("SELECT * FROM experiments")
