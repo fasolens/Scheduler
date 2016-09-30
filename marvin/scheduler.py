@@ -253,6 +253,7 @@ CREATE INDEX IF NOT EXISTS k_ssl_id     ON owners(ssl_id);
 CREATE INDEX IF NOT EXISTS k_recurring  ON experiments(recurring_until);
 CREATE INDEX IF NOT EXISTS k_start      ON schedule(start);
 CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
+CREATE INDEX IF NOT EXISTS k_expid      ON schedule(expid);
 CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
 
             """.split(";"):
