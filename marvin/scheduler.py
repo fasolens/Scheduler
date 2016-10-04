@@ -872,8 +872,9 @@ SELECT DISTINCT * FROM (
                     -- restart
         """
 
-        # TODO: any time this is called, check existing recurrent experiments
-        #       for extension. This should be a quick check.
+        # SKIP: any time this is called, check existing recurrent experiments
+        #      for extension. This should be a quick check.
+        #      (no recurrence beyond scheduling period allowed yet)
         # TODO: calculate and check total quota requirements before allocating
 
         try:
@@ -914,6 +915,10 @@ SELECT DISTINCT * FROM (
         preselection = None
         if opts.get(u"nodes") is not None:
             preselection = opts.get("nodes").split(",")
+
+        if opts.get('internal') is not None and \
+           u.get('ssl_id') is not "c0004c4c44b2adc8a63d0b5ca62a7acd973198ba":
+            return None, "option internal not allowed"
 
         hidden_keys = [
             'recurrence',
