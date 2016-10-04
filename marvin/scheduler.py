@@ -918,7 +918,7 @@ SELECT DISTINCT * FROM (
 
         if opts.get('internal') is not None and \
            u.get('ssl_id') is not "c0004c4c44b2adc8a63d0b5ca62a7acd973198ba":
-            return None, "option internal not allowed"
+            return None, "option internal not allowed", {}
 
         hidden_keys = [
             'recurrence',
