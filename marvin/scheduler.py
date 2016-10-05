@@ -166,7 +166,7 @@ class Scheduler:
                       (DEVICE_CURRENT, node.get('DeviceId'),))
             if c.rowcount == 0:
                 c.execute("INSERT OR REPLACE INTO node_interface "
-                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                           (device.get('NodeId'), device.get('DeviceId'),
                            device.get('MccMnc'), device.get('Operator'),
                            device.get('Iccid'),
@@ -334,7 +334,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
                 c.execute("""INSERT INTO quota_journal
                     SELECT last_reset, '%s', ownerid, NULL,
                     reset_value, "scheduled reset"
-                    FROM %s WHERE last_reset = ?""" % (table, table, now))
+                    FROM %s WHERE last_reset = %s""" % (table, table, now))
         # interface quotas
         c.execute("""UPDATE node_interface SET quota_current = quota_reset_value,
                                                quota_reset_date = ?,
