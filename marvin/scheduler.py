@@ -336,7 +336,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
                     reset_value, "scheduled reset"
                     FROM %s WHERE last_reset = ?""" % (table, table, now))
         # interface quotas
-        c.execute("""UPDATE node_interface SET quota_current = quota_reset,
+        c.execute("""UPDATE node_interface SET quota_current = quota_reset_value,
                                                quota_reset_date = ?,
                                                quota_last_reset = ?
                      WHERE quota_reset_date < ?""",
@@ -369,7 +369,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         #       may require database changes
         reset_date = self.first_of_next_month()
         c.execute("""UPDATE node_interface SET
-                         quota_current = ?, quota_reset = ?,
+                         quota_current = ?, quota_reset_value = ?,
                          quota_reset_date = ?, quota_last_reset = ?,
                          quota_type = ?
                      WHERE nodeid = ? AND iccid = ?""",
@@ -1017,21 +1017,12 @@ SELECT DISTINCT * FROM (
         until = int(opts.get('until', 0))
 
         try:
-            c.execute("INSERT INTO experiments "
-                      "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)",
-                      (name, ownerid, nodetypes, script, start, stop,
-                       until, json.dumps(opts)))
-            expid = c.lastrowid
+            available={}
             for inum, i in enumerate(intervals):
                 nodes = self.get_available_nodes(
                             preselection, type_require, type_reject,
                             i[0], i[1])
 
-                log.debug(
-                    "Available nodes in interval (%s, %s): %s",
-                    i[0],
-                    i[1],
-                    len(nodes))
                 if len(nodes) < nodecount:
                     self.db().rollback()
                     msg = "Only %s/%s nodes are available during " \
@@ -1044,9 +1035,21 @@ SELECT DISTINCT * FROM (
                             "start": i[0],
                             "stop": i[1]}
                     return None, msg, data
-
                 nodes = nodes[:nodecount]
-                for node in nodes:
+                available[i]=nodes
+
+            now = int(time.time())
+            total_time = duration * nodecount
+            total_storage = req_storage * nodecount
+            total_traffic = req_traffic * nodecount * 3
+            # no write queries until this point
+            c.execute("INSERT INTO experiments "
+                      "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)",
+                      (name, ownerid, nodetypes, script, start, stop,
+                       until, json.dumps(opts)))
+            expid = c.lastrowid
+            for inum, i in enumerate(intervals):
+                for node in available[i]:
                     c.execute("INSERT INTO schedule VALUES "
                               "(NULL, ?, ?, ?, ?, ?, ?, ?)",
                               (node['id'], expid, i[0], i[1], 'defined',
@@ -1054,11 +1057,6 @@ SELECT DISTINCT * FROM (
                 # set scheduling ID manually, append suffix
                 c.execute("UPDATE schedule SET id = ROWID || ? "\
                           "WHERE expid = ?", (config.get('suffix',''), expid))
-
-                now = int(time.time())
-                total_time = duration * nodecount
-                total_storage = req_storage * nodecount
-                total_traffic = req_traffic * nodecount * 3
                 c.execute("UPDATE node_interface SET "
                           "quota_current = quota_current - ? "
                           "WHERE nodeid = ? and status = ?",
