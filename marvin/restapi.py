@@ -122,7 +122,6 @@ class Resource:
 
         if "quota" in data.keys():
             if role == scheduler.ROLE_ADMIN:
-                nodeid = data.keys.get('nodeid')
                 iccid  = data.keys.get('iccid')
                 options = {} # reserved for future use, quota type etc.
                 value  = data.keys.get('value')
@@ -357,7 +356,6 @@ class Experiment:
 
 
 class User:
-
     def GET(self, userid):
         role = rest_api.get_role(web.ctx)
         if role is None:

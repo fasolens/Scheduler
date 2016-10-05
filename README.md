@@ -81,9 +81,11 @@ only for users (role: user)
 
 only for administrators (role: admin)
 
-  * PUT  resources        type=mobile|static|...
+  * PUT  resources/#      type=mobile|static|...
+  * PUT  resources/#      iccid=&quota= [update interface quotas]
   * POST users            name=&ssl= [ssl fingerprint]
-  * DELETE user/#
+  * PUT  users/#          data=&time=&storage= [update user quotas]
+  * DELETE users/#
 
 only for a node with the given id # (role: node)
 
