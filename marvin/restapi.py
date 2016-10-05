@@ -119,7 +119,25 @@ class Resource:
             else:
                 web.ctx.status = '401 Unauthorized'
                 return error("You'd have to be an admin to do that")
-        elif role == scheduler.ROLE_NODE:
+
+        if "quota" in data.keys():
+            if role == scheduler.ROLE_ADMIN:
+                nodeid = data.keys.get('nodeid')
+                iccid  = data.keys.get('iccid')
+                options = {} # reserved for future use, quota type etc.
+                value  = data.keys.get('value')
+                result = rest_api.scheduler.set_interface_quota(nodeid, iccid, options, value)
+                if result > 0:
+                    return error("Updated.")
+                else:
+                    web.ctx.status = '404 Not Found'
+                    return error("User ID not found")
+            else:
+                web.ctx.status = '401 Unauthorized'
+                return error("You'd have to be an admin to do that")
+
+
+        if role == scheduler.ROLE_NODE:
             if name != ("Node %s" % nodeid):
                 web.ctx.status = ''
                 return error("Wrong user to update this status. (%s)" % name)
@@ -368,6 +386,30 @@ class User:
 
         set_headers(web)
         return dumps(data)
+
+    def PUT(self, userid):
+          if userid in ["", "/"]:
+              web.ctx.status = '404 Not Found'
+              return error("Updating collection not allowed.")
+          userid = userid[1:]
+          data = web.input()
+
+          uid, role, name = rest_api.get_user(web.ctx)
+          if "time" in data.keys() or \
+             "data" in data.keys() or \
+             "storage" in data.keys():
+              if role == scheduler.ROLE_ADMIN:
+                  result = rest_api.scheduler.set_time_quota(userid, data.get('time')) \
+                         + rest_api.scheduler.set_data_quota(userid, data.get('data')) \
+                         + rest_api.scheduler.set_storage_quota(userid, data.get('storage'))
+                  if result > 0:
+                      return error("Updated.")
+                  else:
+                      web.ctx.status = '404 Not Found'
+                      return error("Could not find user ID.")
+              else:
+                  web.ctx.status = '401 Unauthorized'
+                  return error("You'd have to be an admin to do that")
 
     def POST(self, ignored):
         role = rest_api.get_role(web.ctx)
