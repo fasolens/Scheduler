@@ -28,10 +28,11 @@ class SchedulerTestCase(unittest.TestCase):
             self.sch = Scheduler()
 
             c = self.sch.db().cursor()
+            now = int(time.time())
             c.execute("INSERT OR IGNORE INTO nodes VALUES (?, ?, ?, ?)",
-                  ('1', 'test-node', 'active', 0))
+                  ('1', 'test-node', 'active', now))
             c.execute("INSERT OR IGNORE INTO nodes VALUES (?, ?, ?, ?)",
-                  ('2', 'test-node 2', 'active', 0))
+                  ('2', 'test-node 2', 'active', now))
             c.execute("INSERT OR REPLACE INTO node_interface "
                   "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                   ('1', 'a', 'ab', 'abc', 'abcd', 0, 0, 0, 0, 0, 0))
@@ -105,8 +106,8 @@ class SchedulerTestCase(unittest.TestCase):
         self.assertEqual(r[2]['available'], 1)
         # too much storage requested
         r = self.sch.allocate(1,'test', now + 1500, 500, 1, 'status:test', '...',
-                              {'storage': 501 * 1000000})
-        self.assertEqual(r[2]['requested'], 501 * 1000000)
+                              {'storage': 501 * 1000000000})
+        self.assertEqual(r[2]['requested'], 501 * 1000000000)
 
     def test_11_recurrence(self):
         now = int(time.time())

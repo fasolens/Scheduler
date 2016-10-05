@@ -1103,7 +1103,6 @@ SELECT DISTINCT * FROM (
                           }
         except db.Error as er:
             # NOTE: automatic rollback is triggered in case of an exception
-            print er.message
             log.error(er.message)
             return None, "Task creation failed.", {'error': er.message}
 
