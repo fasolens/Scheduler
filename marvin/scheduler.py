@@ -89,7 +89,7 @@ DEVICE_HISTORIC = 'historic'
 DEVICE_CURRENT = 'current'
 
 QUOTA_MONTHLY = 0
-
+QUOTA_DAYOFMONTH = 1
 
 class SchedulerException(Exception):
     pass
@@ -352,6 +352,21 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
 
     def set_time_quota(self, userid, value):
         return self._set_quota(userid, value, 'quota_owner_time')
+
+    def set_interface_quota(self, nodeid, iccid, options, value):
+        c = self.db().cursor()
+        now = int(time.time())
+        c.execute("""UPDATE node_interface SET
+                       quota_value = ?, quota_reset = ?,
+                       quota_reset_date = ?, quota_type = ?
+                     WHERE nodeid = ? AND iccid = ?""",
+                  (value, value, reset_date, QUOTA_MONTHLY, nodeid, iccid))
+        count = c.rowcount
+        if c.rowcount > 0:
+            c.execute("INSERT INTO quota_journal VALUES (?, ?, NULL, ?, ?, ?)",
+                      (now, "node_interface", iccid, value, "set by API"))
+        self.db().commit()
+        return count
 
     def get_activity(self):
         activity = {}
