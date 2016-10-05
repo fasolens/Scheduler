@@ -33,11 +33,11 @@ class SchedulerTestCase(unittest.TestCase):
             c.execute("INSERT OR IGNORE INTO nodes VALUES (?, ?, ?, ?)",
                   ('2', 'test-node 2', 'active', 0))
             c.execute("INSERT OR REPLACE INTO node_interface "
-                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                  ('1', 'a', 'ab', 'abc', 'abcd', 0, 0, 0, 0, 0))
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  ('1', 'a', 'ab', 'abc', 'abcd', 0, 0, 0, 0, 0, 0))
             c.execute("INSERT OR REPLACE INTO node_interface "
-                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                  ('2', 'a', 'ab', 'abc', 'abcd', 0, 0, 0, 0, 0))
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  ('2', 'a', 'ab', 'abc', 'abcd', 0, 0, 0, 0, 0, 0))
             self.sch.db().commit()
             self.sch.set_node_types(1, 'status:test')
 
