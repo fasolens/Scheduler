@@ -164,12 +164,13 @@ class Scheduler:
             c.execute("UPDATE node_interface SET status = ? "
                       "WHERE imei = ?",
                       (DEVICE_CURRENT, node.get('DeviceId'),))
-            c.execute("INSERT OR REPLACE INTO node_interface "
-                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                      (device.get('NodeId'), device.get('DeviceId'),
-                       device.get('MccMnc'), device.get('Operator'),
-                       device.get('Iccid'),
-                       0, 0, QUOTA_MONTHLY, 0, DEVICE_CURRENT))
+            if c.rowcount == 0:
+                c.execute("INSERT OR REPLACE INTO node_interface "
+                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                          (device.get('NodeId'), device.get('DeviceId'),
+                           device.get('MccMnc'), device.get('Operator'),
+                           device.get('Iccid'),
+                           0, 0, QUOTA_MONTHLY, 0, 0, DEVICE_CURRENT))
         self.db().commit()
 
     connections = {}
@@ -205,9 +206,10 @@ CREATE TABLE IF NOT EXISTS node_type (nodeid INTEGER NOT NULL,
 CREATE TABLE IF NOT EXISTS node_interface (nodeid INTEGER NOT NULL,
     imei TEXT NOT NULL, mccmnc TEXT NOT NULL,
     operator TEXT NOT NULL, iccid TEXT NOT NULL,
-    quota_value INTEGER NOT NULL,
-    quota_reset INTEGER, quota_type INTEGER NOT NULL,
-    quota_reset_date INTEGER, status TEXT NOT NULL,
+    quota_current INTEGER NOT NULL,
+    quota_reset_value INTEGER, quota_type INTEGER NOT NULL,
+    quota_reset_date  INTEGER, quota_last_reset INTEGER NOT NULL,
+    status TEXT NOT NULL,
     PRIMARY KEY (nodeid, imei, iccid));
 CREATE TABLE IF NOT EXISTS owners (id INTEGER PRIMARY KEY ASC,
     name TEXT UNIQUE NOT NULL, ssl_id TEXT UNIQUE NOT NULL,
@@ -330,8 +332,15 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
                       (self.first_of_next_month(), now, now))
             if c.rowcount > 0:
                 c.execute("""INSERT INTO quota_journal
-        SELECT last_reset, '%s', ownerid, NULL, reset_value, "scheduled reset"
-        FROM %s           """ % (table, table))
+                    SELECT last_reset, '%s', ownerid, NULL,
+                    reset_value, "scheduled reset"
+                    FROM %s WHERE last_reset = ?""" % (table, table, now))
+        # interface quotas
+        c.execute("""UPDATE node_interface SET quota_current = quota_reset,
+                                               quota_reset_date = ?,
+                                               quota_last_reset = ?
+                     WHERE quota_reset_date < ?""",
+                  (self.first_of_next_month(), now, now))
         self.db().commit()
 
     def _set_quota(self, userid, value, table):
@@ -356,11 +365,15 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
     def set_interface_quota(self, nodeid, iccid, options, value):
         c = self.db().cursor()
         now = int(time.time())
+        # TODO: handle other quota types, as per the options.
+        #       may require database changes
+        reset_date = self.first_of_next_month()
         c.execute("""UPDATE node_interface SET
-                       quota_value = ?, quota_reset = ?,
-                       quota_reset_date = ?, quota_type = ?
+                         quota_current = ?, quota_reset = ?,
+                         quota_reset_date = ?, quota_last_reset = ?,
+                         quota_type = ?
                      WHERE nodeid = ? AND iccid = ?""",
-                  (value, value, reset_date, QUOTA_MONTHLY, nodeid, iccid))
+                  (value, value, reset_date, now, QUOTA_MONTHLY, nodeid, iccid))
         count = c.rowcount
         if c.rowcount > 0:
             c.execute("INSERT INTO quota_journal VALUES (?, ?, NULL, ?, ?, ?)",
@@ -462,6 +475,12 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         today = datetime.date.today()
         return datetime.datetime(year=today.year,
                                  month=(today.month % 12) + 1,
+                                 day=1).strftime('%s')
+
+    def first_of_this_month(self):
+        today = datetime.date.today()
+        return datetime.datetime(year=today.year,
+                                 month=(today.month % 12),
                                  day=1).strftime('%s')
 
     def create_user(self, name, ssl, role):
@@ -728,7 +747,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         if nodes is not None and len(nodes) > 0:
             preselection = " AND n.id IN ('" + "', '".join(nodes) + "') \n"
 
-        query = "\nSELECT n.id AS id, MIN(i.quota_value) AS min_quota"\
+        query = "\nSELECT n.id AS id, MIN(i.quota_current) AS min_quota"\
                 "  FROM nodes n, node_interface i \n"\
                 "  WHERE n.status = ? AND n.id = i.nodeid \n"
         query += preselection
@@ -1041,11 +1060,11 @@ SELECT DISTINCT * FROM (
                 total_storage = req_storage * nodecount
                 total_traffic = req_traffic * nodecount * 3
                 c.execute("UPDATE node_interface SET "
-                          "quota_value = quota_value - ? "
+                          "quota_current = quota_current - ? "
                           "WHERE nodeid = ? and status = ?",
                           (req_traffic, node['id'], DEVICE_CURRENT))
                 c.execute("""INSERT INTO quota_journal SELECT ?, "node_interface",
-                             NULL, iccid, quota_value,
+                             NULL, iccid, quota_current,
                              "experiment #%s requested %i bytes of traffic" FROM
                              node_interface WHERE nodeid = ? and status = ? """ %
                              (expid, req_traffic),
