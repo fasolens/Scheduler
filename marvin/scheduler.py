@@ -928,11 +928,6 @@ SELECT DISTINCT * FROM (
         u = u[0]
         ownerid = u['id']
 
-        if u['quota_time'] < (duration * nodecount):
-            return None, "Insufficient time quota.", \
-                   {'quota_time': u['quota_time'],
-                    'required': duration * nodecount}
-
         try:
             opts = options if type(options) is dict else json.loads(options)
         except:
@@ -983,14 +978,6 @@ SELECT DISTINCT * FROM (
             return None, "Requested data quota too high.", \
                    {'max_data': POLICY_TASK_MAX_TRAFFIC,
                     'requested': req_traffic}
-        if u['quota_storage'] < (req_storage * nodecount):
-            return None, "Insufficient storage quota.", \
-                   {'quota_storage': u['quota_storage'],
-                    'required': req_storage * nodecount}
-        if u['quota_data'] < (req_traffic * nodecount * 3):
-            return None, "Insufficient data quota.", \
-                   {'quota_data': u['quota_data'],
-                    'required': req_traffic * nodecount * 3}
 
         type_require, type_reject = self.parse_node_types(nodetypes)
         if type_require is None:
@@ -1016,6 +1003,24 @@ SELECT DISTINCT * FROM (
             return None, ex.message, {}
         until = int(opts.get('until', 0))
 
+        num_intervals = len(intervals)
+        total_time = duration * nodecount * num_intervals
+        total_storage = req_storage * nodecount * num_intervals
+        total_traffic = req_traffic * nodecount * 3 * num_intervals
+
+        if u['quota_time'] < total_time:
+            return None, "Insufficient time quota.", \
+                   {'quota_time': u['quota_time'],
+                    'required': total_time}
+        if u['quota_storage'] < total_storage:
+            return None, "Insufficient storage quota.", \
+                   {'quota_storage': u['quota_storage'],
+                    'required': total_storage}
+        if u['quota_data'] < total_traffic:
+            return None, "Insufficient data quota.", \
+                   {'quota_data': u['quota_data'],
+                    'required': total_traffic}
+
         try:
             available={}
             for inum, i in enumerate(intervals):
@@ -1039,10 +1044,6 @@ SELECT DISTINCT * FROM (
                 available[i]=nodes
 
             now = int(time.time())
-            num_intervals = len(intervals)
-            total_time = duration * nodecount * num_intervals
-            total_storage = req_storage * nodecount * num_intervals
-            total_traffic = req_traffic * nodecount * 3 * num_intervals
             # no write queries until this point
             c.execute("INSERT INTO experiments "
                       "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)",
