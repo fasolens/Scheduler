@@ -1039,9 +1039,10 @@ SELECT DISTINCT * FROM (
                 available[i]=nodes
 
             now = int(time.time())
-            total_time = duration * nodecount
-            total_storage = req_storage * nodecount
-            total_traffic = req_traffic * nodecount * 3
+            num_intervals = len(intervals)
+            total_time = duration * nodecount * num_intervals
+            total_storage = req_storage * nodecount * num_intervals
+            total_traffic = req_traffic * nodecount * 3 * num_intervals
             # no write queries until this point
             c.execute("INSERT INTO experiments "
                       "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -1054,44 +1055,45 @@ SELECT DISTINCT * FROM (
                               "(NULL, ?, ?, ?, ?, ?, ?, ?)",
                               (node['id'], expid, i[0], i[1], 'defined',
                                shared, json.dumps(deployment_opts)))
-                # set scheduling ID manually, append suffix
+                    c.execute("UPDATE node_interface SET "
+                              "quota_current = quota_current - ? "
+                              "WHERE nodeid = ? and status = ?",
+                              (req_traffic, node['id'], DEVICE_CURRENT))
+                    c.execute("""INSERT INTO quota_journal SELECT ?, "node_interface",
+                              NULL, iccid, quota_current,
+                              "experiment #%s requested %i bytes of traffic" FROM
+                              node_interface WHERE nodeid = ? and status = ? """ %
+                              (expid, req_traffic),
+                              (now, node['id'], DEVICE_CURRENT))
+                # set scheduling ID for all inserted rows, append suffix
                 c.execute("UPDATE schedule SET id = ROWID || ? "\
                           "WHERE expid = ?", (config.get('suffix',''), expid))
-                c.execute("UPDATE node_interface SET "
-                          "quota_current = quota_current - ? "
-                          "WHERE nodeid = ? and status = ?",
-                          (req_traffic, node['id'], DEVICE_CURRENT))
-                c.execute("""INSERT INTO quota_journal SELECT ?, "node_interface",
-                             NULL, iccid, quota_current,
-                             "experiment #%s requested %i bytes of traffic" FROM
-                             node_interface WHERE nodeid = ? and status = ? """ %
-                             (expid, req_traffic),
-                             (now, node['id'], DEVICE_CURRENT))
+
                 c.execute("UPDATE quota_owner_time SET current = ? "
                           "WHERE ownerid = ?",
                           (u['quota_time'] - total_time, ownerid))
                 c.execute("""INSERT INTO quota_journal SELECT ?, "quota_owner_time",
                              ownerid, NULL, current,
-                             "experiment #%s requested %i seconds runtime" FROM
-                             quota_owner_time WHERE ownerid = ?""" % (expid, total_time),
+                             "experiment #%s requested %i seconds runtime (%i nodes, %i intervals)" FROM
+                             quota_owner_time WHERE ownerid = ?""" % (expid, total_time, nodecount, num_intervals),
                              (now, ownerid))
+
                 c.execute("UPDATE quota_owner_storage SET current = ? "
                           "WHERE ownerid = ?",
-                          (u['quota_storage'] - (req_storage * nodecount),
-                           ownerid))
+                          (u['quota_storage'] - total_storage, ownerid))
                 c.execute("""INSERT INTO quota_journal SELECT ?, "quota_owner_storage",
                              ownerid, NULL, current,
-                             "experiment #%s requested %i bytes" FROM
-                             quota_owner_storage WHERE ownerid = ?""" % (expid, total_storage),
+                             "experiment #%s requested %i bytes (%i nodes, %i intervals)" FROM
+                             quota_owner_storage WHERE ownerid = ?""" % (expid, total_storage, nodecount, num_intervals),
                              (now, ownerid))
+
                 c.execute("UPDATE quota_owner_data SET current = ? "
                           "WHERE ownerid = ?",
-                          (u['quota_data'] - (req_traffic * nodecount * 3),
-                           ownerid))
+                          (u['quota_data'] - total_traffic, ownerid))
                 c.execute("""INSERT INTO quota_journal SELECT ?, "quota_owner_data",
                              ownerid, NULL, current,
-                             "experiment #%s requested %i bytes" FROM
-                             quota_owner_data WHERE ownerid = ?""" % (expid, total_traffic),
+                             "experiment #%s requested %i bytes (%i nodes, %i intervals)" FROM
+                             quota_owner_data WHERE ownerid = ?""" % (expid, total_traffic, nodecount, num_intervals),
                              (now, ownerid))
             self.db().commit()
             return expid, "Created experiment %s on %s nodes " \
