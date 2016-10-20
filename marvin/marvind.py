@@ -196,8 +196,6 @@ class SchedulingClient:
                 (id, starthook))
             pro = Popen([self.starthook, id, "started"], stdout=PIPE, stdin=PIPE)
             output, serr = pro.communicate()
-            print output
-            print serr
             if pro.returncode != 0:
                 log.warning(
                     "Start hook for task %s returned non-zero (%s). Failed." %
@@ -205,17 +203,25 @@ class SchedulingClient:
                 self.set_status(id, "failed; start hook exit code %i" % pro.returncode)
 
         timestamp = sched['stop']
-        timestring = datetime.fromtimestamp(
-            timestamp).strftime(
-                AT_TIME_FORMAT)  # we are losing the seconds
-        log.debug("Trying to set at using %s" % timestring)
-        pro = Popen(["at", timestring], stdout=PIPE, stdin=PIPE)
-        output, serr = pro.communicate(input=stophook + "\n")
-        print output
-        print serr
-        if pro.returncode != 0:
-            log.error("Failed to set stop hook for task %s" % stophook)
-            self.set_status(id, "failed; atq stop exit code %i" % pro.returncode)
+        now  = int(time.time())
+        if timestamp > now + 60:
+          timestring = datetime.fromtimestamp(
+              timestamp).strftime(
+                  AT_TIME_FORMAT)  # we are losing the seconds
+          log.debug("Trying to set at using %s" % timestring)
+          pro = Popen(["at", timestring], stdout=PIPE, stdin=PIPE)
+          output, serr = pro.communicate(input=stophook + "\n")
+          if pro.returncode != 0:
+              log.error("Failed to set stop hook for task %s" % stophook)
+              self.set_status(id, "failed; atq stop exit code %i" % pro.returncode)
+        else:
+            self.set_status(id, "failed; deployment time exceeded stop time")
+            log.warning(
+                "Task %s has a past stop time. Running %s" %
+                (id, stophook))
+            pro = Popen([self.stophook, id], stdout=PIPE, stdin=PIPE)
+            output, serr = pro.communicate()
+            log.warning("Finished cleaning up.")
 
         # TODO: handle tasks that failed scheduling
         # FIXME: if this happens, it is actually quite serious.
