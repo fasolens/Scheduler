@@ -252,7 +252,7 @@ CREATE TABLE IF NOT EXISTS quota_journal (timestamp INTEGER,
 CREATE TABLE IF NOT EXISTS key_pairs (schedid TEXT, 
     private TEXT NOT NULL, public TEXT NOT NULL,
     expires INTEGER NOT NULL,
-    FOREIGN KEY (schedid9 REFERENCES schedule(id));
+    FOREIGN KEY (schedid9 REFERENCES schedule(id),);
 
 CREATE INDEX IF NOT EXISTS k_status     ON nodes(status);
 CREATE INDEX IF NOT EXISTS k_heartbeat  ON nodes(heartbeat);
@@ -263,6 +263,7 @@ CREATE INDEX IF NOT EXISTS k_start      ON schedule(start);
 CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
 CREATE INDEX IF NOT EXISTS k_expid      ON schedule(expid);
 CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
+CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);      
 
             """.split(";"):
                 c.execute(statement.strip())
@@ -299,6 +300,15 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
     def generate_key_pair(self):
         key = RSA.generate(2048, os.urandom)
         return key.exportKey('OpenSSH'), key.publickey().exportKey('OpenSSH')
+    def list_public_keys(self):
+        c = self.db().cursor()
+        now = int(time.time())
+        c.execute("DELETE FROM key_pairs WHERE expires < ?", (now,))
+        self.db().commit()
+        c.execute("SELECT public FROM key_pairs")
+        data = c.fetchall()
+        keys = [dict(x) for x in data] 
+        return keys
 
     def set_node_types(self, nodeid, nodetypes):
         c = self.db().cursor()

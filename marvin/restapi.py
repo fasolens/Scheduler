@@ -480,6 +480,9 @@ class Backend:
             else:
                 activity = rest_api.scheduler.get_activity()
                 return dumps(activity)
+        elif action == "/tunnels":
+            keys = rest_api.scheduler.get_public_keys()
+            return dumps(keys)
         else:
             web.ctx.status = '404 Not Found'
             return error("Unknown request")
