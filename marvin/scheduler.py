@@ -299,7 +299,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
     def generate_key_pair(self):
         key = RSA.generate(2048, os.urandom)
         return key.exportKey('OpenSSH'), key.publickey().exportKey('OpenSSH')
-    def list_public_keys(self):
+    def get_public_keys(self):
         c = self.db().cursor()
         now = int(time.time())
         c.execute("DELETE FROM key_pairs WHERE expires < ?", (now,))
