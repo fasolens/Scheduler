@@ -148,7 +148,7 @@ class Resource:
 
             limit = int(data.get("limit", PREFETCH_COUNT))
             data = rest_api.scheduler.get_schedule(nodeid=nodeid, limit=limit,
-                                                   stop=now + PREFETCH_LIMIT)
+                                                   stop=now + PREFETCH_LIMIT, private=True)
             return dumps(data)
         else:
             web.ctx.status = '400 Bad Request'
