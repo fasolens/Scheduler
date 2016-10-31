@@ -6,6 +6,7 @@ from inventory import inventory_api
 from itertools import chain
 import logging
 from logging.handlers import WatchedFileHandler
+import os
 import re
 import simplejson as json
 import sqlite3 as db
@@ -306,7 +307,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         self.db().commit()
         c.execute("SELECT public FROM key_pairs")
         data = c.fetchall()
-        keys = [dict(x) for x in data] 
+        keys = [dict(x)['public'] for x in data] 
         return keys
 
     def set_node_types(self, nodeid, nodetypes):
@@ -599,10 +600,10 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         for x in tasks:
             x['deployment_options'] = json.loads(
                 x.get('deployment_options', '{}'))
-        if not private:
-            for key in tasks['deployment_options'].keys():
-                if key[0]=='_':
-                    del tasks['deployment_options'][key]
+            if not private:
+                for key in x['deployment_options'].keys():
+                    if key[0]=='_':
+                        del x['deployment_options'][key]
         if len(tasks)==1:
             for x in tasks:
                 c.execute("SELECT meter,value FROM traffic_reports WHERE schedid=?",
@@ -1074,7 +1075,7 @@ SELECT DISTINCT * FROM (
                 available[i]=nodes
 
             if ssh: 
-                keypairs = [self.get_key_pair() for x in xrange(nodecount * len(intervals))]
+                keypairs = [self.generate_key_pair() for x in xrange(nodecount * len(intervals))]
             now = int(time.time())
 
             # no write queries until this point
