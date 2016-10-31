@@ -14,6 +14,8 @@ from thread import get_ident
 import threading
 import time
 
+from Crypto.PublicKey import RSA
+
 config = configuration.select('marvinctld')
 
 log = logging.getLogger('Scheduler')
@@ -247,6 +249,10 @@ CREATE TABLE IF NOT EXISTS quota_journal (timestamp INTEGER,
     reason TEXT NOT NULL,
     FOREIGN KEY (ownerid) REFERENCES owners(id),
     FOREIGN KEY (iccid) REFERENCES node_interface(iccid));
+CREATE TABLE IF NOT EXISTS key_pairs (schedid TEXT, 
+    private TEXT NOT NULL, public TEXT NOT NULL,
+    expires INTEGER NOT NULL,
+    FOREIGN KEY (schedid9 REFERENCES schedule(id));
 
 CREATE INDEX IF NOT EXISTS k_status     ON nodes(status);
 CREATE INDEX IF NOT EXISTS k_heartbeat  ON nodes(heartbeat);
@@ -289,6 +295,10 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
                 interfaces = c.fetchall()
                 node['interfaces'] = [dict(x) for x in interfaces] or []
         return nodes
+
+    def generate_key_pair(self):
+        key = RSA.generate(2048, os.urandom)
+        return key.exportKey('OpenSSH'), key.publickey().exportKey('OpenSSH')
 
     def set_node_types(self, nodeid, nodetypes):
         c = self.db().cursor()
@@ -537,7 +547,8 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
             return None
 
     def get_schedule(self, schedid=None, expid=None, nodeid=None,
-                     userid=None, past=False, start=0, stop=0, limit=0):
+                     userid=None, past=False, start=0, stop=0, limit=0,
+                     private=False):
         """Return scheduled jobs.
 
         Keywords arguments:
@@ -579,6 +590,10 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         for x in tasks:
             x['deployment_options'] = json.loads(
                 x.get('deployment_options', '{}'))
+        if not private:
+            for key in tasks['deployment_options'].keys():
+                if key[0]=='_':
+                    del tasks['deployment_options'][key]
         if len(tasks)==1:
             for x in tasks:
                 c.execute("SELECT meter,value FROM traffic_reports WHERE schedid=?",
@@ -670,6 +685,9 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
             #    result = [x[0] for x in c.fetchall()]
             #    experiments[i]['schedules'] = result
             experiments[i]['options'] = json.loads(task.get('options', '{}'))
+            for key in experiments[i]['options'].keys()"  
+                if key[0]=='_':
+                    del experiments[i]['options'][key]   
             if 'recurring_until' in experiments[i]:
                 del experiments[i]['recurring_until']
         return experiments or None
