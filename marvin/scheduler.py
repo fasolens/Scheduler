@@ -685,7 +685,7 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
             #    result = [x[0] for x in c.fetchall()]
             #    experiments[i]['schedules'] = result
             experiments[i]['options'] = json.loads(task.get('options', '{}'))
-            for key in experiments[i]['options'].keys()"  
+            for key in experiments[i]['options'].keys():  
                 if key[0]=='_':
                     del experiments[i]['options'][key]   
             if 'recurring_until' in experiments[i]:
