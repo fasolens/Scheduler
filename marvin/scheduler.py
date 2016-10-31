@@ -249,10 +249,9 @@ CREATE TABLE IF NOT EXISTS quota_journal (timestamp INTEGER,
     reason TEXT NOT NULL,
     FOREIGN KEY (ownerid) REFERENCES owners(id),
     FOREIGN KEY (iccid) REFERENCES node_interface(iccid));
-CREATE TABLE IF NOT EXISTS key_pairs (schedid TEXT, 
+CREATE TABLE IF NOT EXISTS key_pairs (
     private TEXT NOT NULL, public TEXT NOT NULL,
-    expires INTEGER NOT NULL,
-    FOREIGN KEY (schedid9 REFERENCES schedule(id),);
+    expires INTEGER NOT NULL);
 
 CREATE INDEX IF NOT EXISTS k_status     ON nodes(status);
 CREATE INDEX IF NOT EXISTS k_heartbeat  ON nodes(heartbeat);
@@ -974,8 +973,11 @@ SELECT DISTINCT * FROM (
             preselection = opts.get("nodes").split(",")
 
         if opts.get('internal') is not None and \
-           u.get('ssl_id') is not "c0004c4c44b2adc8a63d0b5ca62a7acd973198ba":
+          u.get('ssl_id') is not "c0004c4c44b2adc8a63d0b5ca62a7acd973198ba":
             return None, "option internal not allowed", {}
+
+        if opts.get('ssh'):
+            ssh = True
 
         hidden_keys = [
             'recurrence',
@@ -1071,7 +1073,10 @@ SELECT DISTINCT * FROM (
                 nodes = nodes[:nodecount]
                 available[i]=nodes
 
+            if ssh: 
+                keypairs = [self.get_key_pair() for x in xrange(nodecount * len(intervals))]
             now = int(time.time())
+
             # no write queries until this point
             c.execute("INSERT INTO experiments "
                       "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -1080,10 +1085,17 @@ SELECT DISTINCT * FROM (
             expid = c.lastrowid
             for inum, i in enumerate(intervals):
                 for node in available[i]:
+                    if ssh:
+                        private, public = keypairs.pop()
+                        deployment_opts['_ssh.private'] = private
+                        deployment_opts['ssh.public'] = public
                     c.execute("INSERT INTO schedule VALUES "
                               "(NULL, ?, ?, ?, ?, ?, ?, ?)",
                               (node['id'], expid, i[0], i[1], 'defined',
                                shared, json.dumps(deployment_opts)))
+                    if ssh:
+                        c.execute("INSERT INTO key_pairs VALUES "
+                                  "(?, ?, ?)", (private, public, i[1]))
                     c.execute("UPDATE node_interface SET "
                               "quota_current = quota_current - ? "
                               "WHERE nodeid = ? and status = ?",
