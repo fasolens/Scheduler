@@ -418,7 +418,7 @@ class SchedulingClient:
 
     def get_maintenance_mode(self):
         try:
-            fd = open("/.maintenance","r")
+            fd = open("/monroe/maintenance/enabled","r")
             if fd.read().strip()=="1":
                 return "1"
         except:
