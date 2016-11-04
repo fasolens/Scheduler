@@ -18,6 +18,10 @@ if [ ! -z "$IS_INTERNAL" ]; then
   BASEDIR=/experiments/monroe${BDEXT}
   mkdir -p $BASEDIR
   echo $CONFIG > $BASEDIR/$SCHEDID.conf
+  # redirect output to log file
+  exec > $BASEDIR/start.log 2>&1
+else
+  exec >> $BASEDIR/$SCHEDID/start.log 2>&1
 fi
 
 NOERROR_CONTAINER_IS_RUNNING=0

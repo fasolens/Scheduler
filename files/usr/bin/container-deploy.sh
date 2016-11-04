@@ -1,4 +1,11 @@
 #!/bin/bash
+
+echo "redirecting all output to the following locations:"
+echo " - /tmp/container-deploy until an experiment directory is created"
+echo " - experiment/deploy.log after that."
+
+rm /tmp/container-deploy 2>/dev/null 
+exec > /tmp/container-deploy 2>&1
 set -e
 
 SCHEDID=$1
@@ -72,14 +79,20 @@ if [ "$SUM" -gt "$QUOTA_DISK" ]; then
   exit $ERROR_QUOTA_EXCEEDED;
 fi
 
-if [ ! -d $BASEDIR/$SCHEDID ]; then
-    mkdir -p $BASEDIR/$SCHEDID;
-    dd if=/dev/zero of=$BASEDIR/${SCHEDID}.disk bs=1000 count=$QUOTA_DISK_KB;
-    mkfs.ext4 $BASEDIR/${SCHEDID}.disk -F -L $SCHEDID;
+EXPDIR=$BASEDIR/$SCHEDID
+if [ ! -d $EXPDIR ]; then
+    mkdir -p $EXPDIR;
+    dd if=/dev/zero of=$EXPDIR.disk bs=1000 count=$QUOTA_DISK_KB;
+    mkfs.ext4 $EXPDIR.disk -F -L $SCHEDID;
 fi
-mountpoint -q $BASEDIR/$SCHEDID || {
-    mount -t ext4 -o loop,data=journal,nodelalloc,barrier=1 $BASEDIR/${SCHEDID}.disk $BASEDIR/${SCHEDID};
+mountpoint -q $EXPDIR || {
+    mount -t ext4 -o loop,data=journal,nodelalloc,barrier=1 $EXPDIR.disk $EXPDIR;
 }
+
+# moving deployment files and switching redirects
+cat /tmp/container-deploy >> $EXPDIR/deploy.log
+rm /tmp/container-deploy
+exec >> $EXPDIR/deploy.log 2>&1
 
 JSON=$( echo '{}' | jq .deployment=$SUM )
 
