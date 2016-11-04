@@ -16,6 +16,9 @@ if [ -f $BASEDIR/$SCHEDID.conf ]; then
 fi
 if [ ! -z "$IS_INTERNAL" ]; then
   BASEDIR=/experiments/monroe${BDEXT}
+  exec > $BASEDIR/container-stop.log 2>&1
+else
+  exec >> $BASEDIR/$SCHEDID/cleanup.log 2>&1
 fi
 
 CID=$( docker ps -a | grep $CONTAINER | awk '{print $1}' )
