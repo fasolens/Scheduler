@@ -977,8 +977,7 @@ SELECT DISTINCT * FROM (
           u.get('ssl_id') is not "c0004c4c44b2adc8a63d0b5ca62a7acd973198ba":
             return None, "option internal not allowed", {}
 
-        if opts.get('ssh'):
-            ssh = True
+        ssh = 'ssh' in opts
 
         hidden_keys = [
             'recurrence',
