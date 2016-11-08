@@ -17,7 +17,7 @@ fi
 if [ ! -z "$IS_INTERNAL" ]; then
   BASEDIR=/experiments/monroe${BDEXT}
 fi
-exec >> /tmp/cleanup.log 2>&1
+exec > /tmp/cleanup.log 2>&1
 
 CID=$( docker ps -a | grep $CONTAINER | awk '{print $1}' )
 
@@ -84,6 +84,7 @@ if [ ! -z "$IS_INTERNAL" ]; then
     rm $BASEDIR/$SCHEDID/container.*
 else
     cat /tmp/cleanup.log > $BASEDIR/$SCHEDID/cleanup.log
+    echo "(end of public log)"
     monroe-user-experiments;  #rsync all remaining files
 fi
 echo "ok."
@@ -94,19 +95,15 @@ rm -r $BASEDIR/$SCHEDID/*.tmp
 rm -r $BASEDIR/$SCHEDID/lost+found # remove lost+found created by fsck
 # any other file should be rsynced by now
 
-if [ -z "$(ls -A $BASEDIR/$SCHEDID/ 2>/dev/null)" ]; then
-  umount $BASEDIR/$SCHEDID            2>/dev/null  || echo 'Directory is no longer mounted.'
-  rmdir  $BASEDIR/$SCHEDID            2>/dev/null
-  rm     $BASEDIR/${SCHEDID}.conf     2>/dev/null
-  rm     $STATUSDIR/${SCHEDID}.conf   2>/dev/null
-  rm     $BASEDIR/${SCHEDID}.disk     2>/dev/null
-  rm     $BASEDIR/${SCHEDID}.counter  2>/dev/null
-  rm -r  $USAGEDIR/monroe-${SCHEDID}  2>/dev/null
-  cp     $STATUSDIR/${SCHEDID}.traffic  $STATUSDIR/${SCHEDID}.traffic_ 2>/dev/null
+umount $BASEDIR/$SCHEDID            
+rmdir  $BASEDIR/$SCHEDID            
+rm     $BASEDIR/${SCHEDID}.conf     
+rm     $STATUSDIR/${SCHEDID}.conf   
+rm     $BASEDIR/${SCHEDID}.disk     
+rm     $BASEDIR/${SCHEDID}.counter  
+rm -r  $USAGEDIR/monroe-${SCHEDID}  
+cp     $STATUSDIR/${SCHEDID}.traffic  $STATUSDIR/${SCHEDID}.traffic_ 
 fi
-rm     $BASEDIR/${SCHEDID}.pid      2>/dev/null
+rm     $BASEDIR/${SCHEDID}.pid
 echo "ok."
 echo "Cleanup finished $(date)."
-
-cat /tmp/cleanup.log > $BASEDIR/$SCHEDID/cleanup.log
-monroe-user-experiments;  #final rsync of cleanup.log
