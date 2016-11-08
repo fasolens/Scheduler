@@ -16,10 +16,8 @@ if [ -f $BASEDIR/$SCHEDID.conf ]; then
 fi
 if [ ! -z "$IS_INTERNAL" ]; then
   BASEDIR=/experiments/monroe${BDEXT}
-  exec > $BASEDIR/container-stop.log 2>&1
-else
-  exec >> $BASEDIR/$SCHEDID/cleanup.log 2>&1
 fi
+exec >> /tmp/cleanup.log 2>&1
 
 CID=$( docker ps -a | grep $CONTAINER | awk '{print $1}' )
 
@@ -85,7 +83,8 @@ if [ ! -z "$IS_INTERNAL" ]; then
     monroe-rsync-results;
     rm $BASEDIR/$SCHEDID/container.*
 else
-    monroe-user-experiments;  #final rsync, if possible
+    cat /tmp/cleanup.log > $BASEDIR/$SCHEDID/cleanup.log
+    monroe-user-experiments;  #rsync all remaining files
 fi
 echo "ok."
 
@@ -107,3 +106,7 @@ if [ -z "$(ls -A $BASEDIR/$SCHEDID/ 2>/dev/null)" ]; then
 fi
 rm     $BASEDIR/${SCHEDID}.pid      2>/dev/null
 echo "ok."
+echo "Cleanup finished $(date)."
+
+cat /tmp/cleanup.log > $BASEDIR/$SCHEDID/cleanup.log
+monroe-user-experiments;  #final rsync of cleanup.log
