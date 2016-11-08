@@ -41,6 +41,7 @@ TASK_FINAL_CODES  = [
 ]
 TASK_STATUS_CODES = TASK_FINAL_CODES + [
     'defined',     # experiment is created in the scheduler
+    'requested',   # the scheduling task has been sent to the node
     'deployed',    # node has deployed the experiment, scheduled a start time
     'delayed',     # scheduling process failed temporarily
     'started',     # node has successfully started the experiment

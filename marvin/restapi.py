@@ -149,6 +149,9 @@ class Resource:
             limit = int(data.get("limit", PREFETCH_COUNT))
             data = rest_api.scheduler.get_schedule(nodeid=nodeid, limit=limit,
                                                    stop=now + PREFETCH_LIMIT, private=True)
+            for task in data:
+                if task.get('status') == 'defined':
+                    rest_api.scheduler.set_status(task.get('id'), 'requested')
             return dumps(data)
         else:
             web.ctx.status = '400 Bad Request'
