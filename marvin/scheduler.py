@@ -6,6 +6,7 @@ from inventory import inventory_api
 from itertools import chain
 import logging
 from logging.handlers import WatchedFileHandler
+import os
 import re
 import simplejson as json
 import sqlite3 as db
@@ -13,6 +14,8 @@ import sys
 from thread import get_ident
 import threading
 import time
+
+from Crypto.PublicKey import RSA
 
 config = configuration.select('marvinctld')
 
@@ -247,6 +250,9 @@ CREATE TABLE IF NOT EXISTS quota_journal (timestamp INTEGER,
     reason TEXT NOT NULL,
     FOREIGN KEY (ownerid) REFERENCES owners(id),
     FOREIGN KEY (iccid) REFERENCES node_interface(iccid));
+CREATE TABLE IF NOT EXISTS key_pairs (
+    private TEXT NOT NULL, public TEXT NOT NULL,
+    expires INTEGER NOT NULL);
 
 CREATE INDEX IF NOT EXISTS k_status     ON nodes(status);
 CREATE INDEX IF NOT EXISTS k_heartbeat  ON nodes(heartbeat);
@@ -257,6 +263,7 @@ CREATE INDEX IF NOT EXISTS k_start      ON schedule(start);
 CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
 CREATE INDEX IF NOT EXISTS k_expid      ON schedule(expid);
 CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
+CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);      
 
             """.split(";"):
                 c.execute(statement.strip())
@@ -289,6 +296,19 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
                 interfaces = c.fetchall()
                 node['interfaces'] = [dict(x) for x in interfaces] or []
         return nodes
+
+    def generate_key_pair(self):
+        key = RSA.generate(2048, os.urandom)
+        return key.exportKey('OpenSSH'), key.publickey().exportKey('OpenSSH')
+    def get_public_keys(self):
+        c = self.db().cursor()
+        now = int(time.time())
+        c.execute("DELETE FROM key_pairs WHERE expires < ?", (now,))
+        self.db().commit()
+        c.execute("SELECT public FROM key_pairs")
+        data = c.fetchall()
+        keys = [dict(x)['public'] for x in data] 
+        return keys
 
     def set_node_types(self, nodeid, nodetypes):
         c = self.db().cursor()
@@ -537,7 +557,8 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
             return None
 
     def get_schedule(self, schedid=None, expid=None, nodeid=None,
-                     userid=None, past=False, start=0, stop=0, limit=0):
+                     userid=None, past=False, start=0, stop=0, limit=0,
+                     private=False):
         """Return scheduled jobs.
 
         Keywords arguments:
@@ -579,6 +600,10 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
         for x in tasks:
             x['deployment_options'] = json.loads(
                 x.get('deployment_options', '{}'))
+            if not private:
+                for key in x['deployment_options'].keys():
+                    if key[0]=='_':
+                        del x['deployment_options'][key]
         if len(tasks)==1:
             for x in tasks:
                 c.execute("SELECT meter,value FROM traffic_reports WHERE schedid=?",
@@ -670,6 +695,9 @@ CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
             #    result = [x[0] for x in c.fetchall()]
             #    experiments[i]['schedules'] = result
             experiments[i]['options'] = json.loads(task.get('options', '{}'))
+            for key in experiments[i]['options'].keys():  
+                if key[0]=='_':
+                    del experiments[i]['options'][key]   
             if 'recurring_until' in experiments[i]:
                 del experiments[i]['recurring_until']
         return experiments or None
@@ -946,8 +974,10 @@ SELECT DISTINCT * FROM (
             preselection = opts.get("nodes").split(",")
 
         if opts.get('internal') is not None and \
-           u.get('ssl_id') is not "c0004c4c44b2adc8a63d0b5ca62a7acd973198ba":
+          u.get('ssl_id') is not "c0004c4c44b2adc8a63d0b5ca62a7acd973198ba":
             return None, "option internal not allowed", {}
+
+        ssh = 'ssh' in opts
 
         hidden_keys = [
             'recurrence',
@@ -1043,7 +1073,10 @@ SELECT DISTINCT * FROM (
                 nodes = nodes[:nodecount]
                 available[i]=nodes
 
+            if ssh: 
+                keypairs = [self.generate_key_pair() for x in xrange(nodecount * len(intervals))]
             now = int(time.time())
+
             # no write queries until this point
             c.execute("INSERT INTO experiments "
                       "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -1052,10 +1085,17 @@ SELECT DISTINCT * FROM (
             expid = c.lastrowid
             for inum, i in enumerate(intervals):
                 for node in available[i]:
+                    if ssh:
+                        private, public = keypairs.pop()
+                        deployment_opts['_ssh.private'] = private
+                        deployment_opts['ssh.public'] = public
                     c.execute("INSERT INTO schedule VALUES "
                               "(NULL, ?, ?, ?, ?, ?, ?, ?)",
                               (node['id'], expid, i[0], i[1], 'defined',
                                shared, json.dumps(deployment_opts)))
+                    if ssh:
+                        c.execute("INSERT INTO key_pairs VALUES "
+                                  "(?, ?, ?)", (private, public, i[1]))
                     c.execute("UPDATE node_interface SET "
                               "quota_current = quota_current - ? "
                               "WHERE nodeid = ? and status = ?",

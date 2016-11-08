@@ -88,6 +88,7 @@ fi
 echo  "ok."
 
 echo -n "Creating file system... "
+
 EXPDIR=$BASEDIR/$SCHEDID
 if [ ! -d $EXPDIR ]; then
     mkdir -p $EXPDIR;
