@@ -51,6 +51,7 @@ for everyone:
   * GET version
   * GET backend/auth [verify SSL certificate]
   * GET backend/activity [show activity statistics] 
+  * GET backend/pubkeys [show public keys for running experiments] 
 
 for all authenticated clients:
 
@@ -160,6 +161,7 @@ These are defined as scheduling options, interpreted by the scheduling server:
     * restart     - (default 1) 0 if the experiment is not to be restarted if the node is rebooted
     * storage     - (default 1GB - container size?) storage quota for experiment results.
     * traffic     - traffic quota, per interface, bidirectional
+    * ssh         - if provided (any value), the scheduler generates a public/private key pair stored in the options ssh.public and _ssh.private
 
 Options that are required to be known during deployment are passed to the node as 
 deployment parameters.
@@ -167,7 +169,12 @@ deployment parameters.
 The options parameter should be x-www-form-urlencoded, that is separated by ampersands
 and in the form key=value, or in the form of a JSON object.
 
+#### Container parameters:
 
+All options (including user provided keys that are not handled by the 
+scheduler) are passed to the container in the /monroe/config file. 
+Options prefixed with an underscore _ are hidden in the public user 
+interface and API, and only passed to the container.
 
 #### Authentication:
 
