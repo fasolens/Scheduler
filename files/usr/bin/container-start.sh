@@ -31,14 +31,16 @@ ERROR_NETWORK_CONTEXT_NOT_FOUND=11
 ERROR_IMAGE_NOT_FOUND=12
 ERROR_MAINTENANCE_MODE=13
 
-# Check for maintenance mode
+echo -n "Checking for maintenance mode... "
 MAINTENANCE=$(cat /.maintenance || echo 0)
 if [ $MAINTENANCE -eq 1 ]; then
    echo 'failed; node is in maintenance mode.' > $STATUSDIR/$SCHEDID.status
+   echo "enabled."
    exit $ERROR_MAINTENANCE_MODE;
 fi
+echo "disabled."
 
-# make sure network namespaces are set up
+echo -n "Ensure network and containers are set up... "
 mkdir -p /var/run/netns
 
 # Container boot counter and measurement UID
@@ -51,6 +53,7 @@ NODEID=$(</etc/nodeid)
 IMAGEID=$(docker images -q --no-trunc monroe-$SCHEDID)
 
 if [ -z "$IMAGEID" ]; then
+    echo "experiment container not found."
     exit $ERROR_IMAGE_NOT_FOUND;
 fi
 
@@ -60,9 +63,11 @@ GUID="${IMAGEID}.${SCHEDID}.${NODEID}.${COUNT}"
 
 CONFIG=$(echo $CONFIG | jq '.guid="'$GUID'"|.nodeid="'$NODEID'"')
 echo $CONFIG > $BASEDIR/$SCHEDID.conf
+echo "ok."
 
 ### START THE CONTAINER ###############################################
 
+echo -n "Starting container... "
 if [ -d $BASEDIR/$SCHEDID ]; then
     MOUNT_DISK="-v $BASEDIR/$SCHEDID:/monroe/results -v $BASEDIR/$SCHEDID:/outdir"
 fi
@@ -72,6 +77,7 @@ fi
 
 # check that this container is not running yet
 if [ ! -z "$(docker ps | grep monroe-$SCHEDID)" ]; then
+    echo "already running."
     exit $NOERROR_CONTAINER_IS_RUNNING;
 fi
 
@@ -79,10 +85,11 @@ fi
 # network namespace called 'monroe'
 MONROE_NOOP=$(docker ps |grep monroe/noop|awk '{print $1}')
 if [ -z "$MONROE_NOOP" ]; then
+    echo "network context missing."
     exit $ERROR_NETWORK_CONTEXT_NOT_FOUND;
 fi
 
-docker run -d \
+CID_ON_START=$(docker run -d \
        --name=monroe-$SCHEDID \
        --net=container:$MONROE_NOOP \
        --cap-add NET_ADMIN \
@@ -91,9 +98,12 @@ docker run -d \
        -v /etc/nodeid:/nodeid:ro \
        $MOUNT_DISK \
        $TSTAT_DISK \
-       $CONTAINER
+       $CONTAINER)
+
+echo "ok."
 
 # start accounting
+echo "Starting accounting."
 /usr/bin/usage-defaults || true
 
 # CID: the runtime container ID
@@ -101,6 +111,10 @@ CID=$(docker ps --no-trunc | grep $CONTAINER | awk '{print $1}' | head -n 1)
 
 if [ -z "$CID" ]; then
     echo 'failed; container exited immediately' > $STATUSDIR/$SCHEDID.status
+    echo "Container exited immediately."
+    echo "Log output:"
+    docker logs -t $CID_ON_START || true
+    echo ""
     exit $ERROR_CONTAINER_DID_NOT_START;
 fi
 
@@ -111,6 +125,9 @@ if [ ! -z $PID ]; then
   echo "Started docker process $CID $PID."
 else
   echo 'failed; container exited immediately' > $STATUSDIR/$SCHEDID.status
+  echo "Container exited immediately."
+  echo "Log output:"
+  docker logs -t $CID_ON_START || true
   exit $ERROR_CONTAINER_DID_NOT_START;
 fi
 
@@ -120,3 +137,4 @@ if [ -z "$STATUS" ]; then
 else
   echo $STATUS > $STATUSDIR/$SCHEDID.status
 fi
+echo "Startup finished $(date)."

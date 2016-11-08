@@ -20,11 +20,14 @@ ERROR_INSUFFICIENT_DISK_SPACE=101
 ERROR_QUOTA_EXCEEDED=102
 ERROR_MAINTENANCE_MODE=103
 
-# Check for maintenance mode
+echo -n "Checking for maintenance mode... "
 MAINTENANCE=$(cat /.maintenance || echo 0)
 if [ $MAINTENANCE -eq 1 ]; then
+  echo "enabled."
   exit $ERROR_MAINTENANCE_MODE; 
 fi
+echo "disabled."
+
 
 # Check if we have sufficient resources to deploy this container.
 # If not, return an error code to delay deployment.
@@ -46,11 +49,13 @@ if [ -z "$QUOTA_DISK" ]; then
 fi;
 QUOTA_DISK_KB=$(( $QUOTA_DISK / 1000 ))
 
+echo -n "Checking for disk space... "
 DISKSPACE=$(df / --output=avail|tail -n1)
 if (( "$DISKSPACE" < $(( 2000000 + $QUOTA_DISK_KB )) )); then
     logger -t container-deploy not enough disk space to deploy container $1;
     exit $ERROR_INSUFFICIENT_DISK_SPACE;
 fi
+echo "ok."
 
 EXISTED=$(docker images -q $CONTAINER_URL)
 
@@ -61,6 +66,7 @@ iptables -w -I INPUT 1 -p tcp --source-port 443 -j ACCEPT
 iptables -w -Z INPUT 1
 trap "iptables -w -D OUTPUT -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT; iptables -w -D INPUT  -p tcp --source-port 443 -j ACCEPT" EXIT
 
+echo -n "Pulling container... "
 docker pull $CONTAINER_URL || exit $ERROR_CONTAINER_NOT_FOUND
 
 SENT=$(iptables -vxL OUTPUT 1 | awk '{print $2}')
@@ -76,9 +82,12 @@ fi
 #check if storage quota is exceeded - should never happen
 if [ "$SUM" -gt "$QUOTA_DISK" ]; then
   docker rmi monroe-$SCHEDID || true;
+  echo  "quota exceeded ($SUM)."
   exit $ERROR_QUOTA_EXCEEDED;
 fi
+echo  "ok."
 
+echo -n "Creating file system... "
 EXPDIR=$BASEDIR/$SCHEDID
 if [ ! -d $EXPDIR ]; then
     mkdir -p $EXPDIR;
@@ -88,13 +97,11 @@ fi
 mountpoint -q $EXPDIR || {
     mount -t ext4 -o loop,data=journal,nodelalloc,barrier=1 $EXPDIR.disk $EXPDIR;
 }
+JSON=$( echo '{}' | jq .deployment=$SUM )
+echo $JSON > $STATUSDIR/$SCHEDID.traffic
+echo "ok."
 
+echo "Deployment finished $(date)".
 # moving deployment files and switching redirects
 cat /tmp/container-deploy >> $EXPDIR/deploy.log
 rm /tmp/container-deploy
-exec >> $EXPDIR/deploy.log 2>&1
-
-JSON=$( echo '{}' | jq .deployment=$SUM )
-
-echo $JSON > $STATUSDIR/$SCHEDID.traffic
-
