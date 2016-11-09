@@ -283,6 +283,7 @@ class SchedulingClient:
                         # if the final report exists, both can be deleted.
                         unlink(self.statdir + "/" + report['schedid']+ ".traffic_")
                         unlink(self.statdir + "/" + report['schedid']+ ".traffic")
+                        log.debug("cleaned traffic report for %s." % report['schedid'])
                     except:
                         pass
                     del self.traffic_queue[report['schedid']]
