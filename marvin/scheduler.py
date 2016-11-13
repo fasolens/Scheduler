@@ -300,7 +300,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
 
     def generate_key_pair(self):
         key = RSA.generate(2048, os.urandom)
-        return key.exportKey('OpenSSH'), key.publickey().exportKey('OpenSSH')
+        return key.exportKey('PEM'), key.publickey().exportKey('OpenSSH')
     def get_public_keys(self):
         c = self.db().cursor()
         now = int(time.time())
