@@ -170,11 +170,11 @@ class Scheduler:
                       (DEVICE_CURRENT, node.get('DeviceId'),))
             if c.rowcount == 0:
                 c.execute("INSERT OR REPLACE INTO node_interface "
-                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                           (device.get('NodeId'), device.get('DeviceId'),
                            device.get('MccMnc'), device.get('Operator'),
                            device.get('Iccid'),
-                           0, 0, QUOTA_MONTHLY, 0, 0, DEVICE_CURRENT))
+                           0, 0, QUOTA_MONTHLY, 0, 0, DEVICE_CURRENT, 0))
         self.db().commit()
 
     connections = {}
