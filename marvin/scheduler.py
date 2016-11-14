@@ -1189,7 +1189,7 @@ UPDATE schedule SET status = ? WHERE
 
     def set_if_heartbeat(self, iccid, seen):
         c = self.db().cursor()
-        c.execute("UPDATE interfaces SET heartbeat=? where iccid=?", (seen, iccid))
+        c.execute("UPDATE node_interface SET heartbeat=? where iccid=?", (seen, iccid))
         self.db().commit()
 
     def update_entry(self, schedid, status):
