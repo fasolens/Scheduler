@@ -145,6 +145,10 @@ class Resource:
 
             if "maintenance" in data.keys():
                 rest_api.scheduler.set_maintenance(nodeid, data['maintenance'])
+            if "interfaces" in data.keys():
+                for i in data['interfaces']:
+                    iccid=i.get('iccid')
+                    rest_api.scheduler.set_if_heartbeat(iccid, now)
 
             limit = int(data.get("limit", PREFETCH_COUNT))
             data = rest_api.scheduler.get_schedule(nodeid=nodeid, limit=limit,

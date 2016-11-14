@@ -213,7 +213,7 @@ CREATE TABLE IF NOT EXISTS node_interface (nodeid INTEGER NOT NULL,
     quota_current INTEGER NOT NULL,
     quota_reset_value INTEGER, quota_type INTEGER NOT NULL,
     quota_reset_date  INTEGER, quota_last_reset INTEGER NOT NULL,
-    status TEXT NOT NULL,
+    status TEXT NOT NULL, heartbeat INTEGER,
     PRIMARY KEY (nodeid, imei, iccid));
 CREATE TABLE IF NOT EXISTS owners (id INTEGER PRIMARY KEY ASC,
     name TEXT UNIQUE NOT NULL, ssl_id TEXT UNIQUE NOT NULL,
@@ -1184,8 +1184,12 @@ UPDATE schedule SET status = ? WHERE
 
     def set_heartbeat(self, nodeid, seen):
         c = self.db().cursor()
-        log.debug("Heartbeat on node %s seen %s" % (nodeid, seen))
         c.execute("UPDATE nodes SET heartbeat=? where id=?", (seen, nodeid))
+        self.db().commit()
+
+    def set_if_heartbeat(self, iccid, seen):
+        c = self.db().cursor()
+        c.execute("UPDATE interfaces SET heartbeat=? where iccid=?", (seen, iccid))
         self.db().commit()
 
     def update_entry(self, schedid, status):
