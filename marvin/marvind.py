@@ -29,6 +29,9 @@ import threading
 from datetime import datetime
 from subprocess import Popen, PIPE
 
+sys.path.append('/usr/bin') # to import node utilities
+from interfaces import get_interfaces
+
 requests.packages.urllib3.disable_warnings()
 
 if len(sys.argv) < 2:
@@ -451,12 +454,14 @@ class SchedulingClient:
             try:
                 while self.running.is_set():
                     maintenance = self.get_maintenance_mode()
+                    interfaces = get_interfaces()
                     heartbeat = config[
                         'rest-server'] + "/resources/" + str(self.ID)
                     result = requests.put(
                         heartbeat,
                         data={"limit": PREFETCH_LIMIT,
-                              "maintenance": maintenance},
+                              "maintenance": maintenance,
+                              "interfaces": interfaces},
                         cert=self.cert,
                         verify=False)
                     if result.status_code == 200 and maintenance != "1":
