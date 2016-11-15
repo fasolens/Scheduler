@@ -146,7 +146,8 @@ class Resource:
             if "maintenance" in data.keys():
                 rest_api.scheduler.set_maintenance(nodeid, data['maintenance'])
             if "interfaces" in data.keys():
-                for i in data['interfaces']:
+                interfaces=json.loads(data.get('interfaces'))
+                for i in interfaces:
                     iccid=i.get('iccid')
                     rest_api.scheduler.set_if_heartbeat(iccid, now)
 

@@ -454,7 +454,7 @@ class SchedulingClient:
             try:
                 while self.running.is_set():
                     maintenance = self.get_maintenance_mode()
-                    interfaces = get_interfaces()
+                    interfaces = json.dumps(get_interfaces())
                     heartbeat = config[
                         'rest-server'] + "/resources/" + str(self.ID)
                     result = requests.put(
