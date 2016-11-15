@@ -12,6 +12,7 @@ mkdir -p $BASEDIR
 if [ -f $BASEDIR/$SCHEDID.conf ]; then
   CONFIG=$(cat $BASEDIR/$SCHEDID.conf);
   IS_INTERNAL=$(echo $CONFIG | jq -r '.internal // empty');
+  IS_SSH=$(echo $CONFIG | jq -r '.ssh // empty');
   BDEXT=$(echo $CONFIG | jq -r '.basedir // empty');
 fi
 if [ ! -z "$IS_INTERNAL" ]; then
@@ -89,7 +90,12 @@ if [ -z "$MONROE_NOOP" ]; then
     exit $ERROR_NETWORK_CONTEXT_NOT_FOUND;
 fi
 
-CID_ON_START=$(docker run -d \
+if [ ! -z "$IS_SSH" ]; then
+    OVERRIDE_ENTRYPOINT=" --entrypoint=dumb-init "
+    OVERRIDE_PARAMETERS=" /bin/bash /usr/bin/monroe-sshtunnel-client.sh "
+fi
+
+CID_ON_START=$(docker run -d $OVERRIDE_ENTRYPOINT  \
        --name=monroe-$SCHEDID \
        --net=container:$MONROE_NOOP \
        --cap-add NET_ADMIN \
@@ -98,7 +104,7 @@ CID_ON_START=$(docker run -d \
        -v /etc/nodeid:/nodeid:ro \
        $MOUNT_DISK \
        $TSTAT_DISK \
-       $CONTAINER)
+       $CONTAINER $OVERRIDE_PARAMETERS)
 
 echo "ok."
 
