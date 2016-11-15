@@ -1156,13 +1156,13 @@ SELECT DISTINCT * FROM (
         if len(result) == 0:
             return 0, "Could not find experiment id %s." % expid, {}
         statuses = set([x[0].split(';')[0] for x in result])
-        if statuses.issubset(set(['defined','canceled']):
+        if statuses.issubset(set(['defined','canceled'])):
             c.execute("DELETE FROM schedule WHERE expid = ?", (expid,))
             c.execute("DELETE FROM experiments WHERE id = ?", (expid,))
             self.db().commit()
             return 1, "Ok. Deleted experiment and scheduling entries", {}
-        elif statuses.issubset(set(['stopped', 'finished', 'failed', 'canceled', 'aborted']):
-        	c.execute("UPDATE experiments SET status=? WHERE id=?", (EXPERIMENT_ARCHIVED, expid)) 
+        elif statuses.issubset(set(['stopped', 'finished', 'failed', 'canceled', 'aborted'])):
+            c.execute("UPDATE experiments SET status=? WHERE id=?", (EXPERIMENT_ARCHIVED, expid)) 
             self.db().commit()
             return 1, "Ok. Archived experiment.", {}
         else:

@@ -279,7 +279,9 @@ class Experiment:
                          "access this information")
 
         if task in ["", "/"]:
-            tasks = rest_api.scheduler.get_experiments()
+            params = web.input()
+            showHidden = params.get("showHidden","0")=="1"
+            tasks = rest_api.scheduler.get_experiments(archived=showHidden)
         else:
             path = task.split("/")
             expid = path[1]
@@ -289,7 +291,7 @@ class Experiment:
                     schedid=path[3]
                 else:
                     schedid=-1
-            tasks = rest_api.scheduler.get_experiments(expid=expid, schedid=schedid)
+            tasks = rest_api.scheduler.get_experiments(expid=expid, schedid=schedid, archived=True)
             if tasks is not None:
                 tasks = tasks[0]
 
@@ -345,9 +347,10 @@ class Experiment:
         if path in ["", "/"]:
             web.ctx.status = '400 Bad Request'
             return error("Taskid missing.")
-        expid=path[1:]
+        expid=path.split("/")[1]
         experiments = rest_api.scheduler.get_experiments(expid=expid)
-        if experiments[0]['ownerid'] != uid and role != scheduler.ROLE_USER:
+        if role != scheduler.ROLE_ADMIN and \
+           experiments[0]['ownerid'] != uid:
             web.ctx.status = '401 Unauthorized'
             return error("Only admins and user %i can do this" % uid)
         else:
@@ -380,7 +383,9 @@ class User:
             if len(path) > 2 and path[2] == 'schedules':
                 data = rest_api.scheduler.get_schedule(userid=path[1])
             elif len(path) > 2 and path[2] == 'experiments':
-                data = rest_api.scheduler.get_experiments(userid=path[1])
+                params = web.input()
+                showHidden = params.get("showHidden","0")=="1"
+                data = rest_api.scheduler.get_experiments(userid=path[1], archived=showHidden)
             elif len(path) > 2 and path[2] == 'journals':
                 data = rest_api.scheduler.get_quota_journal(userid=path[1])
             else:
