@@ -92,6 +92,9 @@ NODE_TYPE_TESTING = 'testing'
 DEVICE_HISTORIC = 'historic'
 DEVICE_CURRENT = 'current'
 
+EXPERIMENT_ACTIVE='active' 
+EXPERIMENT_ARCHIVED='archived'
+
 QUOTA_MONTHLY = 0
 QUOTA_DAYOFMONTH = 1
 
@@ -234,6 +237,7 @@ CREATE TABLE IF NOT EXISTS experiments (id INTEGER PRIMARY KEY ASC,
     name TEXT NOT NULL, ownerid INTEGER NOT NULL, type TEXT NOT NULL,
     script TEXT NOT NULL, start INTEGER NOT NULL, stop INTEGER NOT NULL,
     recurring_until INTEGER NOT NULL, options TEXT,
+    status TEXT, 
     FOREIGN KEY (ownerid) REFERENCES owners(id));
 CREATE TABLE IF NOT EXISTS schedule (id TEXT PRIMARY KEY ASC,
     nodeid INTEGER, expid INTEGER, start INTEGER, stop INTEGER,
@@ -546,11 +550,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
 
     def delete_user(self, userid):
         c = self.db().cursor()
-        c.execute("""DELETE FROM schedule WHERE expid IN (
-                   SELECT id FROM experiments WHERE ownerid = ?
-              )""", (userid,))
-        c.execute("DELETE FROM experiments WHERE ownerid = ?", (userid,))
-        c.execute("DELETE FROM owners WHERE id = ?", (userid,))
+        c.execute("UPDATE owners SET role=? WHERE id = ?", (ROLE_INVALID, userid,))
         self.db().commit()
         if c.rowcount == 1:
             return True
@@ -655,20 +655,21 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                 return False, "Status %s cannot be reset." % str(oldstat)
         return False, "Unknown status code (%s)." % str(status)
 
-    def get_experiments(self, expid=None, userid=None, nodeid=None, schedid=None):
+    def get_experiments(self, expid=None, userid=None, nodeid=None, schedid=None, archived=False):
         c = self.db().cursor()
+        archq = " AND e.status='%s' " % EXPERIMENT_ACTIVE if not archived else "" 
         if expid is not None:
             c.execute(
-                "SELECT * FROM experiments WHERE experiments.id=?", (expid,))
+                "SELECT * FROM experiments e WHERE e.id=?" + archq, (expid,))
         elif userid is not None:
-            c.execute("SELECT * FROM experiments WHERE ownerid=?", (userid,))
+            c.execute("SELECT * FROM experiments e WHERE e.ownerid=?" + archq, (userid,))
         elif nodeid is not None:
             c.execute(
-                "SELECT t.id, t.name, t.ownerid, t.type, t.script, t.options "
-                "FROM schedule s, experiments t WHERE s.expid = t.id AND "
-                "s.nodeid=?", (nodeid,))
+                "SELECT e.id, e.name, e.ownerid, e.type, e.script, e.options, e.status"
+                "FROM schedule s, experiments e WHERE s.expid = e.id AND "
+                "s.nodeid=?" + archq, (nodeid,))
         else:
-            c.execute("SELECT * FROM experiments")
+            c.execute("SELECT * FROM experiments e WHERE 1==1" + archq)
         taskrows = c.fetchall()
         experiments = [dict(x) for x in taskrows]
         for i, task in enumerate(experiments):
@@ -691,10 +692,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                 c.execute(query, (experiments[i]['id'],))
                 result = dict([(x[0],x[1]) for x in c.fetchall()])
                 experiments[i]['summary'] = result
-            #    query="SELECT id FROM schedule WHERE expid=?"
-            #    c.execute(query, (experiments[i]['id'],))
-            #    result = [x[0] for x in c.fetchall()]
-            #    experiments[i]['schedules'] = result
+
             experiments[i]['options'] = json.loads(task.get('options', '{}'))
             for key in experiments[i]['options'].keys():  
                 if key[0]=='_':
@@ -1080,9 +1078,9 @@ SELECT DISTINCT * FROM (
 
             # no write queries until this point
             c.execute("INSERT INTO experiments "
-                      "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)",
+                      "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                       (name, ownerid, nodetypes, script, start, stop,
-                       until, json.dumps(opts)))
+                       until, json.dumps(opts)), EXPERIMENT_ACTIVE)
             expid = c.lastrowid
             for inum, i in enumerate(intervals):
                 for node in available[i]:
@@ -1157,12 +1155,16 @@ SELECT DISTINCT * FROM (
         result = c.fetchall()
         if len(result) == 0:
             return 0, "Could not find experiment id %s." % expid, {}
-        statuses = set([x[0] for x in result])
-        if set(['defined']) == statuses or set(['canceled']) == statuses:
+        statuses = set([x[0].split(';')[0] for x in result])
+        if statuses.issubset(set(['defined','canceled']):
             c.execute("DELETE FROM schedule WHERE expid = ?", (expid,))
             c.execute("DELETE FROM experiments WHERE id = ?", (expid,))
             self.db().commit()
             return 1, "Ok. Deleted experiment and scheduling entries", {}
+        elif statuses.issubset(set(['stopped', 'finished', 'failed', 'canceled', 'aborted']):
+        	c.execute("UPDATE experiments SET status=? WHERE id=?", (EXPERIMENT_ARCHIVED, expid)) 
+            self.db().commit()
+            return 1, "Ok. Archived experiment.", {}
         else:
             c.execute("""
 UPDATE schedule SET status = ? WHERE
@@ -1172,12 +1174,12 @@ UPDATE schedule SET status = ? WHERE
             canceled = c.rowcount
             c.execute("""
 UPDATE schedule SET status = ? WHERE
-    status IN ('deployed', 'started', 'redeployed', 'restarted', 'running')
+    status IN ('deployed', 'requested', 'started', 'delayed', 'redeployed', 'restarted', 'running')
     AND expid = ?
                       """, ('aborted', expid))
             aborted = c.rowcount
             self.db().commit()
-            return 1, "Ok. Canceled or aborted scheduling entries", {
+            return 1, "Ok. Canceled or aborted open scheduling entries", {
                        "canceled": canceled,
                        "aborted": aborted
                    }
