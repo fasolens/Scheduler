@@ -686,15 +686,16 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                                {"status": x['status'], "nodeid": x['nodeid'],
                                 "start": x['start'], "stop": x['stop']}
                               ) for x in result])
-                experiments[i]['schedules'] = schedules
                 query="SELECT deployment_options FROM schedule WHERE expid=?"
                 c.execute(query, (experiments[i]['id'],))
                 result = c.fetchone()
                 if result is not None:
-                    experiments[i]['deployment_options']=json.loads(result[0])
-                    for key in experiments[i]['deployment_options'].keys():
+                    opts=json.loads(result[0])
+                    for key in opts.keys():
                         if key[0]=='_':
-                            del experiments[i]['deployment_options'][key]
+                            del opts[key]
+                    schedules['deployment_options']=opts
+                experiments[i]['schedules'] = schedules
             else:
                 query="SELECT status, count(*) FROM schedule WHERE expid=? GROUP BY status"
                 c.execute(query, (experiments[i]['id'],))
