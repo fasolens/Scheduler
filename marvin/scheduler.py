@@ -687,6 +687,13 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                                 "start": x['start'], "stop": x['stop']}
                               ) for x in result])
                 experiments[i]['schedules'] = schedules
+                query="SELECT deployment_options FROM schedule WHERE expid=?"
+                c.execute(query, (experiments[i]['id'],))
+                result = dict(c.fetchone())
+                experiments[i]['deployment_options']=result
+                for key in experiments[i]['deployment_options'].keys():
+                    if key[0]=='_':
+                        del experiments[i]['deployment_options'][key]
             else:
                 query="SELECT status, count(*) FROM schedule WHERE expid=? GROUP BY status"
                 c.execute(query, (experiments[i]['id'],))
