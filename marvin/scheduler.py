@@ -1089,7 +1089,7 @@ SELECT DISTINCT * FROM (
             c.execute("INSERT INTO experiments "
                       "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                       (name, ownerid, nodetypes, script, start, stop,
-                       until, json.dumps(opts)), EXPERIMENT_ACTIVE)
+                       until, json.dumps(opts), EXPERIMENT_ACTIVE))
             expid = c.lastrowid
             for inum, i in enumerate(intervals):
                 for node in available[i]:
