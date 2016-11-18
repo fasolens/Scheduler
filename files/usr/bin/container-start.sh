@@ -33,7 +33,7 @@ ERROR_IMAGE_NOT_FOUND=12
 ERROR_MAINTENANCE_MODE=13
 
 echo -n "Checking for maintenance mode... "
-MAINTENANCE=$(cat /.maintenance || echo 0)
+MAINTENANCE=$(cat /monroe/maintenance/enabled || echo 0)
 if [ $MAINTENANCE -eq 1 ]; then
    echo 'failed; node is in maintenance mode.' > $STATUSDIR/$SCHEDID.status
    echo "enabled."

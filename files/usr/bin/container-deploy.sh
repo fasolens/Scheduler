@@ -21,7 +21,7 @@ ERROR_QUOTA_EXCEEDED=102
 ERROR_MAINTENANCE_MODE=103
 
 echo -n "Checking for maintenance mode... "
-MAINTENANCE=$(cat /.maintenance || echo 0)
+MAINTENANCE=$(cat /monroe/maintenance/enabled || echo 0)
 if [ $MAINTENANCE -eq 1 ]; then
   echo "enabled."
   exit $ERROR_MAINTENANCE_MODE; 
