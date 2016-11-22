@@ -695,7 +695,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                     for key in opts.keys():
                         if key[0]=='_':
                             del opts[key]
-                    schedules['deployment_options']=opts
+                    #schedules['deployment_options']=opts
                 experiments[i]['schedules'] = schedules
             else:
                 query="SELECT status, count(*) FROM schedule WHERE expid=? GROUP BY status"
