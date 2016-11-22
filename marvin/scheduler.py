@@ -208,7 +208,7 @@ class Scheduler:
 CREATE TABLE IF NOT EXISTS nodes (id INTEGER PRIMARY KEY ASC,
     hostname TEXT NOT NULL, status TEXT, heartbeat INTEGER);
 CREATE TABLE IF NOT EXISTS node_type (nodeid INTEGER NOT NULL,
-    tag TEXT NOT NULL, type TEXT NOT NULL, volatile INTEGER NOT NULL, 
+    tag TEXT NOT NULL, type TEXT NOT NULL, volatile INTEGER NOT NULL DEFAULT 1, 
     FOREIGN KEY (nodeid) REFERENCES nodes(id),
     PRIMARY KEY (nodeid, tag));
 CREATE TABLE IF NOT EXISTS node_interface (nodeid INTEGER NOT NULL,
