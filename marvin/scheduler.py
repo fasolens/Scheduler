@@ -88,6 +88,7 @@ ROLE_INVALID = 'invalid'
 NODE_TYPE_STATIC = 'static'
 NODE_TYPE_MOBILE = 'mobile'
 NODE_TYPE_TESTING = 'testing'
+NODE_TYPE_SPECIAL = 'special' # have to be explicitly requested
 
 DEVICE_HISTORIC = 'historic'
 DEVICE_CURRENT = 'current'
@@ -150,12 +151,12 @@ class Scheduler:
                 if value is not None:
                     types.append((tag, value.lower()))
 
-            c.execute("DELETE FROM node_type WHERE nodeid = ?",
+            c.execute("DELETE FROM node_type WHERE nodeid = ? AND volatile = 1",
                       (node["NodeId"],))
             for tag, type_ in types:
                 c.execute(
-                    "INSERT OR IGNORE INTO node_type VALUES (?, ?, ?)",
-                    (node["NodeId"], tag, type_))
+                    "INSERT OR IGNORE INTO node_type VALUES (?, ?, ?, ?)",
+                    (node["NodeId"], tag, type_, 1))
 
         devices = inventory_api("nodes/devices")
         if not devices:
@@ -207,7 +208,7 @@ class Scheduler:
 CREATE TABLE IF NOT EXISTS nodes (id INTEGER PRIMARY KEY ASC,
     hostname TEXT NOT NULL, status TEXT, heartbeat INTEGER);
 CREATE TABLE IF NOT EXISTS node_type (nodeid INTEGER NOT NULL,
-    tag TEXT NOT NULL, type TEXT NOT NULL,
+    tag TEXT NOT NULL, type TEXT NOT NULL, volatile INTEGER NOT NULL, 
     FOREIGN KEY (nodeid) REFERENCES nodes(id),
     PRIMARY KEY (nodeid, tag));
 CREATE TABLE IF NOT EXISTS node_interface (nodeid INTEGER NOT NULL,
@@ -319,12 +320,12 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         c = self.db().cursor()
         types = set(nodetypes.split(","))
         try:
-            c.execute("DELETE FROM node_type WHERE nodeid = ?", (nodeid,))
+            c.execute("DELETE FROM node_type WHERE nodeid = ? AND volatile = 0", (nodeid,))
             for type_ in types:
                 tag, ty = type_.strip().split(":")
                 c.execute(
-                    "INSERT INTO node_type VALUES (?, ?, ?)",
-                    (nodeid, tag, ty))
+                    "INSERT OR REPLACE INTO node_type VALUES (?, ?, ?, ?)",
+                    (nodeid, tag, ty, 0))
             self.db().commit()
             if c.rowcount == 1:
                 return True
