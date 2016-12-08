@@ -111,6 +111,7 @@ class Scheduler:
             self.sync_inventory()
 
     def sync_inventory(self):
+        #return True
         nodes = inventory_api("nodes/status")
         if not nodes:
             log.error("No nodes returned from inventory.")
@@ -499,7 +500,10 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
 
     def first_of_next_month(self):
         today = datetime.date.today()
-        return datetime.datetime(year=today.year,
+        yr = today.year 
+        if today.month == 12:
+            yr = yr + 1
+        return datetime.datetime(year=yr,
                                  month=(today.month % 12) + 1,
                                  day=1).strftime('%s')
 
@@ -983,7 +987,7 @@ SELECT DISTINCT * FROM (
             preselection = opts.get("nodes").split(",")
 
         if opts.get('internal') is not None and \
-          u.get('ssl_id') is not "c0004c4c44b2adc8a63d0b5ca62a7acd973198ba":
+          u.get('ssl_id') != "c0004c4c44b2adc8a63d0b5ca62a7acd973198ba":
             return None, "option internal not allowed", {}
 
         ssh = 'ssh' in opts
