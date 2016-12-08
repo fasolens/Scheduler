@@ -1182,14 +1182,13 @@ SELECT DISTINCT * FROM (
         else:
             c.execute("""
 UPDATE schedule SET status = ? WHERE
+    expid = ? AND
     status IN ('defined')
-    AND expid = ?
                       """, ('canceled', expid))
             canceled = c.rowcount
             c.execute("""
-UPDATE schedule SET status = ? WHERE
-    status IN ('deployed', 'requested', 'started', 'delayed', 'redeployed', 'restarted', 'running')
-    AND expid = ?
+UPDATE schedule SET status = ? WHERE expid = ? AND
+    status IN ('deployed', 'requested', 'started', 'delayed', 'redeployed', 'restarted', 'running') OR status LIKE 'delayed%'
                       """, ('aborted', expid))
             aborted = c.rowcount
             self.db().commit()
