@@ -67,7 +67,10 @@ iptables -w -Z INPUT 1
 trap "iptables -w -D OUTPUT -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT; iptables -w -D INPUT  -p tcp --source-port 443 -j ACCEPT" EXIT
 
 echo -n "Pulling container... "
-docker pull $CONTAINER_URL || exit $ERROR_CONTAINER_NOT_FOUND
+timeout 120 docker pull $CONTAINER_URL || {
+  echo "exit code $?";
+  exit $ERROR_CONTAINER_NOT_FOUND;
+}
 
 SENT=$(iptables -vxL OUTPUT 1 | awk '{print $2}')
 RECEIVED=$(iptables -vxL INPUT 1 | awk '{print $2}')
