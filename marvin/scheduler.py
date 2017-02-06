@@ -978,6 +978,12 @@ SELECT DISTINCT * FROM (
                          "(unix timestamps), nodecount an integer > 0", {
                              "code": ERROR_PARSING_FAILED
                          }
+
+        if len(scripts)>2:
+            return None, "Only two scripts allowed in script parameter", {
+                             "code": ERROR_PARSING_FAILED
+                         }
+
         c = self.db().cursor()
         # confirm userid
         u = self.get_users(userid=user)
