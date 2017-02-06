@@ -183,13 +183,15 @@ class Schedule:
         elif resource == "/find":
             nodes = params.get('nodes', None)
             selection = nodes.split(",") if nodes is not None else None
+            pair = params.get('pair', False) and True
             tasks, errmsg = rest_api.scheduler.find_slot(
                         nodecount=params.get('nodecount', 1),
                         duration=params.get('duration', 1),
                         start=params.get('start', 0),
                         nodetypes=params.get('nodetypes', ''),
                         results=params.get('results', 1),
-                        nodes=selection
+                        nodes=selection,
+                        pair
                     )
             if tasks is None:
                 web.ctx.status = '409 Conflict'

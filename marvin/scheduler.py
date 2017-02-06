@@ -853,7 +853,7 @@ ORDER BY min_quota DESC, n.heartbeat DESC
             return None, "nodetype expression could not be parsed. "+ex.message
 
     def find_slot(self, nodecount=1, duration=1, start=0,
-                  nodetypes="", nodes=None, results=1):
+                  nodetypes="", nodes=None, results=1, pair=False):
         """find the next available slot given certain criteria"""
 
         start, duration, nodecount = int(start), int(duration), int(nodecount)
@@ -917,7 +917,7 @@ SELECT DISTINCT * FROM (
 
             nodes = self.get_available_nodes(
                         selection,
-                        type_require, type_reject, s0, segments[c])
+                        type_require, type_reject, s0, segments[c], pair)
             if len(nodes) >= nodecount:
                 slots.append({
                     'start': s0,
