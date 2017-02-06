@@ -212,6 +212,10 @@ CREATE TABLE IF NOT EXISTS node_type (nodeid INTEGER NOT NULL,
     tag TEXT NOT NULL, type TEXT NOT NULL, volatile INTEGER NOT NULL DEFAULT 1, 
     FOREIGN KEY (nodeid) REFERENCES nodes(id),
     PRIMARY KEY (nodeid, tag));
+CREATE TABLE IF NOT EXISTS node_pair (headid INTEGER NOT NULL,
+    tailid INTEGER NOT NULL,
+    FOREIGN KEY (headid) REFERENCES nodes(id),
+    FOREIGN KEY (tailid) REFERENCES nodes(id));
 CREATE TABLE IF NOT EXISTS node_interface (nodeid INTEGER NOT NULL,
     imei TEXT NOT NULL, mccmnc TEXT NOT NULL,
     operator TEXT NOT NULL, iccid TEXT NOT NULL,
@@ -775,7 +779,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                 "Unsupported recurrence scheme")
 
     def get_available_nodes(self, nodes, type_require,
-                            type_reject, start, stop):
+                            type_reject, start, stop, pair=False):
         """ Select all active nodes not having a task scheduled between
             start and stop from the set of nodes matching type_accept and
             not type_reject
@@ -821,7 +825,19 @@ ORDER BY min_quota DESC, n.heartbeat DESC
                    alive_after])
 
         noderows = c.fetchall()
-        nodes = [dict(x) for x in noderows if x[1] is not None]
+        nodes = [x[0] for x in noderows if x[1] is not None]
+
+        c.execute("SELECT * from node_pair") # TODO: cache this, when calling sync
+        pairrows = c.fetchall()
+        heads = dict(pairrows)
+        tails = {x[1]:x[0] for x in pairrows}
+     
+        if pair:
+            nodes = filter(lambda x: (x in heads and heads[x] in nodes) or \
+                                     (x in tails and tails[x] in nodes), nodes)
+        else:
+            nodes = filter(lambda x: x not in tails, nodes)
+
         return nodes
 
     def parse_node_types(self, nodetypes=""):
@@ -1104,7 +1120,7 @@ SELECT DISTINCT * FROM (
                         deployment_opts['ssh.public'] = public
                     c.execute("INSERT INTO schedule VALUES "
                               "(NULL, ?, ?, ?, ?, ?, ?, ?)",
-                              (node['id'], expid, i[0], i[1], 'defined',
+                              (node, expid, i[0], i[1], 'defined',
                                shared, json.dumps(deployment_opts)))
                     if ssh:
                         c.execute("INSERT INTO key_pairs VALUES "
@@ -1112,13 +1128,13 @@ SELECT DISTINCT * FROM (
                     c.execute("UPDATE node_interface SET "
                               "quota_current = quota_current - ? "
                               "WHERE nodeid = ? and status = ?",
-                              (req_traffic, node['id'], DEVICE_CURRENT))
+                              (req_traffic, node, DEVICE_CURRENT))
                     c.execute("""INSERT INTO quota_journal SELECT ?, "node_interface",
                               NULL, iccid, quota_current,
                               "experiment #%s requested %i bytes of traffic" FROM
                               node_interface WHERE nodeid = ? and status = ? """ %
                               (expid, req_traffic),
-                              (now, node['id'], DEVICE_CURRENT))
+                              (now, node, DEVICE_CURRENT))
                 # set scheduling ID for all inserted rows, append suffix
                 c.execute("UPDATE schedule SET id = ROWID || ? "\
                           "WHERE expid = ?", (config.get('suffix',''), expid))
