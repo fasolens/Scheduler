@@ -107,6 +107,19 @@ class Resource:
         data = web.input()
 
         uid, role, name = rest_api.get_user(web.ctx)
+        if "pair" in data.keys():
+            if role == scheduler.ROLE_ADMIN:
+                tail = data.keys['pair']
+                result = rest_api.scheduler.set_node_pair(nodeid, tail)
+                if result is True:
+                    return error("Node pair set.")
+                else:
+                    web.ctx.status = '404 Not Found'
+                    return error(result)
+            else:
+                web.ctx.status = '401 Unauthorized'
+                return error("You'd have to be an admin to do that")
+
         if "type" in data.keys():
             if role == scheduler.ROLE_ADMIN:
                 result = rest_api.scheduler.set_node_types(nodeid,
@@ -191,7 +204,7 @@ class Schedule:
                         nodetypes=params.get('nodetypes', ''),
                         results=params.get('results', 1),
                         nodes=selection,
-                        pair
+                        pair=pair
                     )
             if tasks is None:
                 web.ctx.status = '409 Conflict'
