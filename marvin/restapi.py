@@ -319,12 +319,13 @@ class Experiment:
             start = params.get('start', 0)
             stop = params.get('stop', 0)
             duration = params.get('duration', stop-start)
+            scripts = params.get('script','').split('|')
 
             alloc, errmsg, extra = rest_api.scheduler.allocate(
                                    user, params['name'],
                                    start, duration,
                                    params['nodecount'], params['nodetypes'],
-                                   params['script'], params.get('options', ''))
+                                   scripts, params.get('options', ''))
             if alloc is not None:
                 web.header('Location', "/schedules/%i" % alloc)
                 web.ctx.status = '201 Created'
