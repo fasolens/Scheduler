@@ -69,7 +69,7 @@ for all authenticated clients:
   * GET users/#/journals
   * GET schedules?start=...&stop=...
   * GET schedules/#
-  * GET schedules/find?nodecount=...&duration=...&start=...&nodetypes=...&nodes=...
+  * GET schedules/find?nodecount=...&duration=...&start=...&nodetypes=...&nodes=...&pair=0|1
   * GET experiments
   * GET experiments/#             (returns experiment summary)
   * GET experiments/#/schedules   (returns detailed task status)
@@ -77,15 +77,16 @@ for all authenticated clients:
 
 only for users (role: user)
 
-  * POST experiments      [+experiment and scheduling parameters]
-  * DELETE experiments/#  [delete an experiment and its schedule entries]
+  * POST experiments      (+experiment and scheduling parameters)
+  * DELETE experiments/#  (delete an experiment and its schedule entries)
 
 only for administrators (role: admin)
 
-  * PUT  resources/#      type=mobile|static|...
-  * PUT  resources/#      iccid=&quota= [update interface quotas]
-  * POST users            name=&ssl= [ssl fingerprint]
-  * PUT  users/#          data=&time=&storage= [update user quotas]
+  * PUT  resources/#      type=tag:value[,tag:value,...]   (set nodetypes for filtering, overriding inventory)
+  * PUT  resources/#      pair=#|delete                    (associate with another node as head/tail pair)
+  * PUT  resources/#      iccid=&quota=                    (update interface quotas)
+  * POST users            name=&ssl=                       (ssl fingerprint)
+  * PUT  users/#          data=&time=&storage=             (update user quotas)
   * DELETE users/#
 
 only for a node with the given id # (role: node)
@@ -148,7 +149,9 @@ The following parameters are used to schedule an experiment:
                 Valid tags are [model, project, status, type]
                 Supports the operators OR(|), NOT(-) and AND(,) in this strict order of precedence.
                 EXAMPLE: type:testing,country:es,-model:apu2d
-  * script    - the experiment to execute, currently in the form of a docker pull URL
+  * script    - the experiment to execute, in the form of one or two docker pull URL, pipe-separated
+                If two URL are provided, the scheduler will select associated node pairs and 
+                send the first URL to the node head, the second URL to the node tail.
 
 These are defined as scheduling options, interpreted by the scheduling server:
 
