@@ -110,6 +110,8 @@ class Resource:
         if "pair" in data.keys():
             if role == scheduler.ROLE_ADMIN:
                 tail = data.keys['pair']
+                if tail == 'delete':
+                    tail = None
                 result = rest_api.scheduler.set_node_pair(nodeid, tail)
                 if result is True:
                     return error("Node pair set.")

@@ -344,11 +344,12 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         c = self.db().cursor()
         c.execute("SELECT id FROM nodes")
         nodes = [x[0] for x in c.fetchall()]
-        if not headid in nodes or not tailid in nodes:
+        if not headid in nodes or (tailid is not None and not tailid in nodes):
             return "Node id does not exist."
-        c.execute("DELETE FROM node_pair WHERE headid=? OR tailid=? OR headid=? OR tailid=?", 
-                  (headid, headid, tailid, tailid))
-        c.execute("INSERT INTO node_pair VALUES (?,?)", (headid, tailid))
+        c.execute("DELETE FROM node_pair WHERE headid=? OR tailid=?", (headid, headid))
+        if tailid is not None:
+            c.execute("DELETE FROM node_pair WHERE headid=? OR tailid=?", (tailid, tailid))
+            c.execute("INSERT INTO node_pair VALUES (?,?)", (headid, tailid))
         self.db.commit()
         return c.rowcount
 
