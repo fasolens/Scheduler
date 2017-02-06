@@ -89,6 +89,9 @@ class SchedulerTestCase(unittest.TestCase):
         # not available
         r = self.sch.allocate(1,'test', now + 500, 500, 1, 'status:test', ['...'], {})
         self.assertEqual(r[2]['available'], 0)
+        # require node pair (not available)
+        r = self.sch.allocate(1,'test', now + 500, 500, 1, 'status:test,-status:foo,-status:bar', ['head','tail'], {})
+        self.assertEqual(r[2]['available'], 0)
         # too soon
         r = self.sch.allocate(1,'test', now, 500, 1, 'status:test', ['...'], {})
         self.assertIsNone(r[0])
