@@ -109,11 +109,11 @@ class Resource:
         uid, role, name = rest_api.get_user(web.ctx)
         if "pair" in data.keys():
             if role == scheduler.ROLE_ADMIN:
-                tail = data.keys['pair']
+                tail = data['pair']
                 if tail == 'delete':
                     tail = None
                 result = rest_api.scheduler.set_node_pair(nodeid, tail)
-                if result is True:
+                if result is 1:
                     return error("Node pair set.")
                 else:
                     web.ctx.status = '404 Not Found'
