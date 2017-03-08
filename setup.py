@@ -17,6 +17,7 @@ setup(
       ('/usr/bin/', ['files/usr/bin/container-stop.sh', 'files/usr/bin/container-start.sh', 'files/usr/bin/container-deploy.sh']),
       ('/lib/systemd/system/', ['files/lib/systemd/system/marvind.service']),
       ('/DEBIAN/', ['files/DEBIAN/postinst','files/DEBIAN/prerm']),
+      ('/etc/cron.d/', ['files/etc/cron.d/marvind']),
     ],
     install_requires = [
       'requests', 'simplejson'

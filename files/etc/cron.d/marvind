@@ -1,0 +1,4 @@
+# /etc/cron.d/marvind
+# occasionally restart marvind to work around docker hiccups
+
+23 2 * * *   root    /bin/systemctl restart marvind
