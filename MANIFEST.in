@@ -1,5 +1,5 @@
 include files/etc/marvind.conf
-include files/etc/marvind.conf
+include files/etc/cron.d/*
 include files/usr/bin/*.sh
 include files/lib/systemd/system/marvind.service
 include files/DEBIAN/*
