@@ -99,6 +99,12 @@ EXPERIMENT_ARCHIVED='archived'
 QUOTA_MONTHLY = 0
 QUOTA_DAYOFMONTH = 1
 
+AM0930 = 34200
+AM1000 = 36000
+PM0930 = 77400
+PM1000 = 79200
+HOURS12 = 43200
+
 class SchedulerException(Exception):
     pass
 
@@ -791,6 +797,36 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
             raise SchedulerException(
                 "Unsupported recurrence scheme")
 
+    def is_maintenance(self, start, stop):
+        """return True if timestamp is between 9:30 to 10:00 am/pm"""
+
+        duration = stop-start
+        tod = start % 86400
+        fin = tod + duration
+        if (tod < AM1000) and (fin > AM0930): 
+            return True
+        if (tod < PM1000) and (fin > PM0930):
+            return True
+        return False
+
+    def segments_maintenance(self, start, stop):
+        """return all timestamps between start and stop that match a mainenance
+           window boundary"""
+
+        duration = stop-start
+        tod = start % 86400
+        day = start - tod
+
+        segments = []
+        for t in xrange(day + AM0930, stop, HOURS12):
+            if (t>start and t<stop): 
+                segments.append(t)
+        for t in xrange(day + AM1000, stop, HOURS12):
+            if (t>start and t<stop): 
+                segments.append(t)
+        return segments
+        
+
     def get_available_nodes(self, nodes, type_require,
                             type_reject, start, stop, pair=False):
         """ Select all active nodes not having a task scheduled between
@@ -798,6 +834,10 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
             not type_reject
         """
         # TODO: take node_interface quota into account
+
+        # return 0 for overlap with maintenance window
+        if self.is_maintenance(start, stop):
+            return None, "query overlaps with maintenance window"
 
         c = self.db().cursor()
 
@@ -914,7 +954,8 @@ SELECT DISTINCT * FROM (
                   list(chain.from_iterable(type_require_)) +
                   list(chain.from_iterable(type_reject_)) +
                   [start, stop])
-        segments = [start] + [x[0] for x in c.fetchall()] + [stop]
+        segments = self.segments_maintenance(start, stop) + 
+                   [start] + [x[0] for x in c.fetchall()] + [stop]
         segments.sort()
 
         slots = []
