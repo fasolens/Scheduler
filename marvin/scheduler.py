@@ -835,9 +835,9 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         """
         # TODO: take node_interface quota into account
 
-        # return 0 for overlap with maintenance window
+        # return empty for overlap with maintenance window
         if self.is_maintenance(start, stop):
-            return None, "query overlaps with maintenance window"
+            return [], []
 
         c = self.db().cursor()
 
@@ -954,7 +954,7 @@ SELECT DISTINCT * FROM (
                   list(chain.from_iterable(type_require_)) +
                   list(chain.from_iterable(type_reject_)) +
                   [start, stop])
-        segments = self.segments_maintenance(start, stop) + 
+        segments = self.segments_maintenance(start, stop) + \
                    [start] + [x[0] for x in c.fetchall()] + [stop]
         segments.sort()
 
