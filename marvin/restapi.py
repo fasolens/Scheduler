@@ -107,6 +107,21 @@ class Resource:
         data = web.input()
 
         uid, role, name = rest_api.get_user(web.ctx)
+        if "pair" in data.keys():
+            if role == scheduler.ROLE_ADMIN:
+                tail = data['pair']
+                if tail == 'delete':
+                    tail = None
+                result = rest_api.scheduler.set_node_pair(nodeid, tail)
+                if result is 1:
+                    return error("Node pair set.")
+                else:
+                    web.ctx.status = '404 Not Found'
+                    return error(result)
+            else:
+                web.ctx.status = '401 Unauthorized'
+                return error("You'd have to be an admin to do that")
+
         if "type" in data.keys():
             if role == scheduler.ROLE_ADMIN:
                 result = rest_api.scheduler.set_node_types(nodeid,
@@ -183,13 +198,15 @@ class Schedule:
         elif resource == "/find":
             nodes = params.get('nodes', None)
             selection = nodes.split(",") if nodes is not None else None
+            pair = params.get('pair', False) and True
             tasks, errmsg = rest_api.scheduler.find_slot(
                         nodecount=params.get('nodecount', 1),
                         duration=params.get('duration', 1),
                         start=params.get('start', 0),
                         nodetypes=params.get('nodetypes', ''),
                         results=params.get('results', 1),
-                        nodes=selection
+                        nodes=selection,
+                        pair=pair
                     )
             if tasks is None:
                 web.ctx.status = '409 Conflict'
@@ -317,12 +334,13 @@ class Experiment:
             start = params.get('start', 0)
             stop = params.get('stop', 0)
             duration = params.get('duration', stop-start)
+            scripts = params.get('script','').split('|')
 
             alloc, errmsg, extra = rest_api.scheduler.allocate(
                                    user, params['name'],
                                    start, duration,
                                    params['nodecount'], params['nodetypes'],
-                                   params['script'], params.get('options', ''))
+                                   scripts, params.get('options', ''))
             if alloc is not None:
                 web.header('Location', "/schedules/%i" % alloc)
                 web.ctx.status = '201 Created'

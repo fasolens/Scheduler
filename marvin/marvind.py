@@ -143,7 +143,8 @@ class SchedulingClient:
 
         timestamp = sched['start']
         deploy_conf = dict(sched['deployment_options'])
-        deploy_conf.update({'script': task['script']})
+        if not 'script' in deploy_conf:
+            deploy_conf.update({'script': task['script']})
         deploy_conf.update({'start': sched['start']})
         deploy_conf.update({'stop': sched['stop']})
         deploy_opts = json.dumps(deploy_conf)

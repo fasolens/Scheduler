@@ -34,11 +34,11 @@ class SchedulerTestCase(unittest.TestCase):
             c.execute("INSERT OR IGNORE INTO nodes VALUES (?, ?, ?, ?)",
                   ('2', 'test-node 2', 'active', now))
             c.execute("INSERT OR REPLACE INTO node_interface "
-                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                  ('1', 'a', 'ab', 'abc', 'abcd', 0, 0, 0, 0, 0, 0))
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  ('1', 'a', 'ab', 'abc', 'abcd', 0, 0, 0, 0, 0, 0, now))
             c.execute("INSERT OR REPLACE INTO node_interface "
-                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                  ('2', 'a', 'ab', 'abc', 'abcd', 0, 0, 0, 0, 0, 0))
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  ('2', 'a', 'ab', 'abc', 'abcd', 0, 0, 0, 0, 0, 0, now))
             self.sch.db().commit()
             self.sch.set_node_types(1, 'status:test')
 
@@ -84,34 +84,37 @@ class SchedulerTestCase(unittest.TestCase):
     def test_10_allocate(self):
         now = int(time.time())
         # basic a few minutes into the future
-        r = self.sch.allocate(1,'test', now + 500, 500, 1, 'status:test,-status:foo,-status:bar', '...', {})
+        r = self.sch.allocate(1,'test', now + 500, 500, 1, 'status:test,-status:foo,-status:bar', ['...'], {})
         self.assertEqual(r[2]['nodecount'], 1)
         # not available
-        r = self.sch.allocate(1,'test', now + 500, 500, 1, 'status:test', '...', {})
+        r = self.sch.allocate(1,'test', now + 500, 500, 1, 'status:test', ['...'], {})
+        self.assertEqual(r[2]['available'], 0)
+        # require node pair (not available)
+        r = self.sch.allocate(1,'test', now + 500, 500, 1, 'status:test,-status:foo,-status:bar', ['head','tail'], {})
         self.assertEqual(r[2]['available'], 0)
         # too soon
-        r = self.sch.allocate(1,'test', now, 500, 1, 'status:test', '...', {})
+        r = self.sch.allocate(1,'test', now, 500, 1, 'status:test', ['...'], {})
         self.assertIsNone(r[0])
         # too soon after the previous experiment
-        r = self.sch.allocate(1,'test', now + 1000, 500, 1, 'status:test', '...', {})
+        r = self.sch.allocate(1,'test', now + 1000, 500, 1, 'status:test', ['...'], {})
         self.assertIsNone(r[0])
         # too short
-        r = self.sch.allocate(1,'test', now + 1500, 1, 1, 'status:test', '...', {})
+        r = self.sch.allocate(1,'test', now + 1500, 1, 1, 'status:test', ['...'], {})
         self.assertIsNone(r[0])
         # zero node count
-        r = self.sch.allocate(1,'test', now + 1500, 500, 0, 'status:test', '...', {})
+        r = self.sch.allocate(1,'test', now + 1500, 500, 0, 'status:test', ['...'], {})
         self.assertIsNone(r[0])
         # too many nodes
-        r = self.sch.allocate(1,'test', now + 1500, 500, 2, 'status:test', '...', {})
+        r = self.sch.allocate(1,'test', now + 1500, 500, 2, 'status:test', ['...'], {})
         self.assertEqual(r[2]['available'], 1)
         # too much storage requested
-        r = self.sch.allocate(1,'test', now + 1500, 500, 1, 'status:test', '...',
+        r = self.sch.allocate(1,'test', now + 1500, 500, 1, 'status:test', ['...'],
                               {'storage': 501 * 1000000000})
         self.assertEqual(r[2]['requested'], 501 * 1000000000)
 
     def test_11_recurrence(self):
         now = int(time.time())
-        r = self.sch.allocate(1,'test', now + 1500, 500, 1, 'status:test', '...',
+        r = self.sch.allocate(1,'test', now + 1500, 500, 1, 'status:test', ['...'],
                 {'recurrence':'simple',
                  'period': 3600,
                  'until': now + 1500 + 3600 * 2 + 500
@@ -128,7 +131,7 @@ class SchedulerTestCase(unittest.TestCase):
                          t[1]['stop'] - t[1]['start'],)
 
         # truncating until
-        r = self.sch.allocate(1,'test', now + 1500, 500, 1, 'status:test', '...',
+        r = self.sch.allocate(1,'test', now + 1500, 500, 1, 'status:test', ['...'],
                 {'recurrence':'simple',
                  'period': 3600,
                  'until': now + 100000000000
@@ -136,7 +139,7 @@ class SchedulerTestCase(unittest.TestCase):
         self.assertLess(r[2]['stop'], now + 100000000000)
 
         # interleaving recurrence
-        r = self.sch.allocate(1,'test', now + 2500, 500, 1, 'status:test', '...',
+        r = self.sch.allocate(1,'test', now + 2500, 500, 1, 'status:test', ['...'],
                 {'recurrence':'simple',
                  'period': 3600,
                  'until': now + 2500 + 3600 * 2 + 500
@@ -144,7 +147,7 @@ class SchedulerTestCase(unittest.TestCase):
         self.assertEqual(r[2]['nodecount'], 1)
         self.assertEqual(r[2]['intervals'], 3)
 
-        r = self.sch.allocate(1,'test', now + 3500, 500, 1, 'status:test', '...',
+        r = self.sch.allocate(1,'test', now + 3500, 500, 1, 'status:test', ['...'],
                 {'recurrence':'simple',
                  'period': 3600,
                  'until': now + 3500 + 3600 * 2 + 500
@@ -163,7 +166,7 @@ class SchedulerTestCase(unittest.TestCase):
         self.assertEqual(r[0][0]['nodecount'], 1)
 
         # actually allocate the suggested slot
-        r = self.sch.allocate(1,'test', r[0][0]['start'], 500, 1, 'status:test', '...', {})
+        r = self.sch.allocate(1,'test', r[0][0]['start'], 500, 1, 'status:test', ['...'], {})
         self.assertEqual(r[2]['nodecount'], 1)
 
         r = self.sch.find_slot(1, duration=500, nodes=['500','600'])
@@ -174,12 +177,12 @@ class SchedulerTestCase(unittest.TestCase):
         self.sch.set_time_quota(1, 500)
         self.sch.set_data_quota(1, 500)
         self.sch.set_storage_quota(1, 500)
-        r = self.sch.allocate(1,'test', now + 500, 600, 1, 'status:test', '...', {})
+        r = self.sch.allocate(1,'test', now + 500, 600, 1, 'status:test', ['...'], {})
         self.assertEqual(r[2]['required'], 600)
-        r = self.sch.allocate(1,'test', now + 500, 500, 1, 'status:test', '...',
+        r = self.sch.allocate(1,'test', now + 500, 500, 1, 'status:test', ['...'],
                               {'traffic':200})
         self.assertEqual(r[2]['required'], 600)
-        r = self.sch.allocate(1,'test', now + 500, 500, 1, 'status:test', '...',
+        r = self.sch.allocate(1,'test', now + 500, 500, 1, 'status:test', ['...'],
                               {'storage':600})
         self.assertEqual(r[2]['required'], 600)
 

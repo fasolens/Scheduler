@@ -212,6 +212,10 @@ CREATE TABLE IF NOT EXISTS node_type (nodeid INTEGER NOT NULL,
     tag TEXT NOT NULL, type TEXT NOT NULL, volatile INTEGER NOT NULL DEFAULT 1, 
     FOREIGN KEY (nodeid) REFERENCES nodes(id),
     PRIMARY KEY (nodeid, tag));
+CREATE TABLE IF NOT EXISTS node_pair (headid INTEGER NOT NULL,
+    tailid INTEGER NOT NULL,
+    FOREIGN KEY (headid) REFERENCES nodes(id),
+    FOREIGN KEY (tailid) REFERENCES nodes(id));
 CREATE TABLE IF NOT EXISTS node_interface (nodeid INTEGER NOT NULL,
     imei TEXT NOT NULL, mccmnc TEXT NOT NULL,
     operator TEXT NOT NULL, iccid TEXT NOT NULL,
@@ -335,6 +339,19 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         except db.Error as er:
             log.warning(er.message)
             return "Error updating node."
+
+    def set_node_pair(self, headid, tailid):
+        c = self.db().cursor()
+        c.execute("SELECT id FROM nodes")
+        nodes = [str(x[0]) for x in c.fetchall()]
+        if not headid in nodes or (tailid is not None and not tailid in nodes):
+            return "Node id does not exist." 
+        c.execute("DELETE FROM node_pair WHERE headid=? OR tailid=?", (headid, headid))
+        if tailid is not None:
+            c.execute("DELETE FROM node_pair WHERE headid=? OR tailid=?", (tailid, tailid))
+            c.execute("INSERT INTO node_pair VALUES (?,?)", (headid, tailid))
+        self.db().commit()
+        return c.rowcount
 
     def set_maintenance(self, nodeid, flag):
         c = self.db().cursor()
@@ -775,7 +792,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                 "Unsupported recurrence scheme")
 
     def get_available_nodes(self, nodes, type_require,
-                            type_reject, start, stop):
+                            type_reject, start, stop, pair=False):
         """ Select all active nodes not having a task scheduled between
             start and stop from the set of nodes matching type_accept and
             not type_reject
@@ -821,8 +838,21 @@ ORDER BY min_quota DESC, n.heartbeat DESC
                    alive_after])
 
         noderows = c.fetchall()
-        nodes = [dict(x) for x in noderows if x[1] is not None]
-        return nodes
+        nodes = [x[0] for x in noderows if x[1] is not None]
+
+        c.execute("SELECT * from node_pair") # TODO: cache this, when calling sync
+        pairrows = c.fetchall()
+     
+        if pair:
+            heads = dict(pairrows)
+            headn = filter(lambda x: x in heads and heads[x] in nodes, nodes)
+            tailn = [heads[x] for x in headn]
+            return headn, tailn    # sorted
+        else:
+            tails = {x[1]:x[0] for x in pairrows}
+            nodes = filter(lambda x: x not in tails, nodes)
+            return nodes, []
+
 
     def parse_node_types(self, nodetypes=""):
         try:
@@ -837,7 +867,7 @@ ORDER BY min_quota DESC, n.heartbeat DESC
             return None, "nodetype expression could not be parsed. "+ex.message
 
     def find_slot(self, nodecount=1, duration=1, start=0,
-                  nodetypes="", nodes=None, results=1):
+                  nodetypes="", nodes=None, results=1, pair=False):
         """find the next available slot given certain criteria"""
 
         start, duration, nodecount = int(start), int(duration), int(nodecount)
@@ -899,9 +929,9 @@ SELECT DISTINCT * FROM (
                                  "matching these criteria."
                 c += 1
 
-            nodes = self.get_available_nodes(
-                        selection,
-                        type_require, type_reject, s0, segments[c])
+            nodes, tails = self.get_available_nodes(
+                               selection,
+                               type_require, type_reject, s0, segments[c], pair)
             if len(nodes) >= nodecount:
                 slots.append({
                     'start': s0,
@@ -925,7 +955,7 @@ SELECT DISTINCT * FROM (
                          "matching these criteria."
 
     def allocate(self, user, name, start, duration, nodecount,
-                 nodetypes, script, options):
+                 nodetypes, scripts, options):
         """Insert a new task on one or multiple nodes,
         creating one or multible jobs.
 
@@ -936,7 +966,7 @@ SELECT DISTINCT * FROM (
         duration    -- duration of the experiment in seconds
         nodecount   -- number of required nodes.
         nodetypes   -- filter on node type (static,spain|norway,-apu1)
-        script      -- deployment URL to be fetched
+        scripts     -- deployment URL to be fetched (1 or 2)
         for the extra options, see README.md
         options     -- shared=1 (default 0)
                     -- recurrence, period, until
@@ -961,6 +991,12 @@ SELECT DISTINCT * FROM (
                          "(unix timestamps), nodecount an integer > 0", {
                              "code": ERROR_PARSING_FAILED
                          }
+
+        if len(scripts)>2:
+            return None, "Only two scripts allowed in script parameter", {
+                             "code": ERROR_PARSING_FAILED
+                         }
+
         c = self.db().cursor()
         # confirm userid
         u = self.get_users(userid=user)
@@ -1026,12 +1062,13 @@ SELECT DISTINCT * FROM (
         if type_require is None:
             error_message = type_reject
             return None, error_message, {}
-        if DEPLOYMENT_RE.match(script) is None:
-            if ['type:deployed'] in type_require:
-                return None, "Deployed nodes can only schedule experiments " \
-                             "hosted by %s" % DEPLOYMENT_SERVER, {}
-            else:
-                type_reject.append(['type:deployed'])
+        for script in scripts:
+            if DEPLOYMENT_RE.match(script) is None:
+                if ['type:deployed'] in type_require:
+                    return None, "Deployed nodes can only schedule experiments " \
+                                 "hosted by %s" % DEPLOYMENT_SERVER, {}
+                else:
+                    type_reject.append(['type:deployed'])
 
         if start == 0:
             start = self.get_scheduling_period()[0] + 10
@@ -1063,13 +1100,16 @@ SELECT DISTINCT * FROM (
             return None, "Insufficient data quota.", \
                    {'quota_data': u['quota_data'],
                     'required': total_traffic}
+        pair = len(scripts) == 2
+        apucount = nodecount * 2 if pair else nodecount
 
         try:
             available={}
+            avl_tails={}
             for inum, i in enumerate(intervals):
-                nodes = self.get_available_nodes(
-                            preselection, type_require, type_reject,
-                            i[0], i[1])
+                nodes, tails = self.get_available_nodes(
+                                   preselection, type_require, type_reject,
+                                   i[0], i[1], pair)
 
                 if len(nodes) < nodecount:
                     self.db().rollback()
@@ -1084,27 +1124,31 @@ SELECT DISTINCT * FROM (
                             "stop": i[1]}
                     return None, msg, data
                 nodes = nodes[:nodecount]
+                tails = tails[:nodecount]
                 available[i]=nodes
+                avl_tails[i]=tails
 
             if ssh: 
-                keypairs = [self.generate_key_pair() for x in xrange(nodecount * len(intervals))]
+                keypairs = [self.generate_key_pair() for x in xrange(apucount * len(intervals))]
             now = int(time.time())
 
             # no write queries until this point
             c.execute("INSERT INTO experiments "
                       "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                      (name, ownerid, nodetypes, script, start, stop,
+                      (name, ownerid, nodetypes, "|".join(scripts), start, stop,
                        until, json.dumps(opts), EXPERIMENT_ACTIVE))
             expid = c.lastrowid
             for inum, i in enumerate(intervals):
-                for node in available[i]:
+
+                def insert_task (node, script):
+                    deployment_opts['script'] = script
                     if ssh:
                         private, public = keypairs.pop()
                         deployment_opts['_ssh.private'] = private
                         deployment_opts['ssh.public'] = public
                     c.execute("INSERT INTO schedule VALUES "
                               "(NULL, ?, ?, ?, ?, ?, ?, ?)",
-                              (node['id'], expid, i[0], i[1], 'defined',
+                              (node, expid, i[0], i[1], 'defined',
                                shared, json.dumps(deployment_opts)))
                     if ssh:
                         c.execute("INSERT INTO key_pairs VALUES "
@@ -1112,13 +1156,19 @@ SELECT DISTINCT * FROM (
                     c.execute("UPDATE node_interface SET "
                               "quota_current = quota_current - ? "
                               "WHERE nodeid = ? and status = ?",
-                              (req_traffic, node['id'], DEVICE_CURRENT))
+                              (req_traffic, node, DEVICE_CURRENT))
                     c.execute("""INSERT INTO quota_journal SELECT ?, "node_interface",
                               NULL, iccid, quota_current,
                               "experiment #%s requested %i bytes of traffic" FROM
                               node_interface WHERE nodeid = ? and status = ? """ %
                               (expid, req_traffic),
-                              (now, node['id'], DEVICE_CURRENT))
+                              (now, node, DEVICE_CURRENT))
+
+                for node in available[i]:
+                    insert_task(node, scripts[0])
+                for node in avl_tails[i]:
+                    insert_task(node, scripts[1])
+
                 # set scheduling ID for all inserted rows, append suffix
                 c.execute("UPDATE schedule SET id = ROWID || ? "\
                           "WHERE expid = ?", (config.get('suffix',''), expid))
