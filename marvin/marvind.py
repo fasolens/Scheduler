@@ -174,7 +174,7 @@ class SchedulingClient:
                 self.set_status(id, "delayed; insufficient disk space")
             elif pro.returncode == 102:  # QUOTA_EXCEEDED
                 self.set_status(id, "failed; storage quota exceeded during deployment")
-            elif pro.returncode == 103:  # QUOTA_EXCEEDED
+            elif pro.returncode == 103:  # MAINTENANCE_MODE
                 self.set_status(id, "delayed; cannot deploy while node is in maintenance mode")
             return
 
@@ -426,6 +426,9 @@ class SchedulingClient:
             fd = open("/monroe/maintenance/enabled","r")
             if fd.read().strip()=="1":
                 return "1"
+            fd = open("/monroe/development/enabled","r")
+            if fd.read().strip()=="1":
+                return "1"
         except:
             pass
         return "0"
@@ -469,7 +472,7 @@ class SchedulingClient:
                         self.update_schedule(result.json())
                         self.post_status()
                     elif maintenance == "1":
-                        log.debug("Not deploying in maintenance mode.")
+                        log.debug("Not deploying in maintenance or development mode.")
                     else:
                         log.debug(
                             "Scheduling server is not available. (Status %s)" %
