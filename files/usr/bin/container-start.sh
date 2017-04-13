@@ -6,8 +6,10 @@ STATUS=$2
 CONTAINER=monroe-$SCHEDID
 
 BASEDIR=/experiments/user
+READONLYDIR=/experiments/shared-readonly
 STATUSDIR=$BASEDIR
 mkdir -p $BASEDIR
+mkdir -p $READONLYDIR
 
 if [ -f $BASEDIR/$SCHEDID.conf ]; then
   CONFIG=$(cat $BASEDIR/$SCHEDID.conf);
@@ -101,7 +103,8 @@ CID_ON_START=$(docker run -d $OVERRIDE_ENTRYPOINT  \
        --cap-add NET_ADMIN \
        --cap-add NET_RAW \
        -v $BASEDIR/$SCHEDID.conf:/monroe/config:ro \
-       -v /etc/nodeid:/nodeid:ro \
+       -v /etc/nodeid:/nodeid:ro \ \
+       -v $READONLYDIR:/monroe/shared:ro \
        $MOUNT_DISK \
        $TSTAT_DISK \
        $CONTAINER $OVERRIDE_PARAMETERS)
