@@ -103,7 +103,7 @@ CID_ON_START=$(docker run -d $OVERRIDE_ENTRYPOINT  \
        --cap-add NET_ADMIN \
        --cap-add NET_RAW \
        -v $BASEDIR/$SCHEDID.conf:/monroe/config:ro \
-       -v /etc/nodeid:/nodeid:ro \ \
+       -v /etc/nodeid:/nodeid:ro \
        -v $READONLYDIR:/monroe/shared:ro \
        $MOUNT_DISK \
        $TSTAT_DISK \
