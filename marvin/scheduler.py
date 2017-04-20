@@ -828,7 +828,8 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         
 
     def get_available_nodes(self, nodes, type_require,
-                            type_reject, start, stop, pair=False):
+                            type_reject, start, stop, 
+                            head=True, tail=False, pair=False):
         """ Select all active nodes not having a task scheduled between
             start and stop from the set of nodes matching type_accept and
             not type_reject
@@ -882,15 +883,18 @@ ORDER BY min_quota DESC, n.heartbeat DESC
 
         c.execute("SELECT * from node_pair") # TODO: cache this, when calling sync
         pairrows = c.fetchall()
+        heads = dict(pairrows)
      
         if pair:
-            heads = dict(pairrows)
             headn = filter(lambda x: x in heads and heads[x] in nodes, nodes)
             tailn = [heads[x] for x in headn]
             return headn, tailn    # sorted
         else:
-            tails = {x[1]:x[0] for x in pairrows}
-            nodes = filter(lambda x: x not in tails, nodes)
+            if tail is False:
+                tails = {x[1]:x[0] for x in pairrows}
+                nodes = filter(lambda x: x not in tails, nodes)
+            if head is False:
+                nodes = filter(lambda x: x not in heads, nodes)
             return nodes, []
 
 
@@ -907,7 +911,8 @@ ORDER BY min_quota DESC, n.heartbeat DESC
             return None, "nodetype expression could not be parsed. "+ex.message
 
     def find_slot(self, nodecount=1, duration=1, start=0,
-                  nodetypes="", nodes=None, results=1, pair=False):
+                  nodetypes="", nodes=None, results=1, 
+                  head=True, tail=False, pair=False):
         """find the next available slot given certain criteria"""
 
         start, duration, nodecount = int(start), int(duration), int(nodecount)
@@ -972,7 +977,8 @@ SELECT DISTINCT * FROM (
 
             nodes, tails = self.get_available_nodes(
                                selection,
-                               type_require, type_reject, s0, segments[c], pair)
+                               type_require, type_reject, s0, segments[c], 
+                               head, tail, pair)
             if len(nodes) >= nodecount:
                 slots.append({
                     'start': s0,
