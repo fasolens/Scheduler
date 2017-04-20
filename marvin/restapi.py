@@ -198,15 +198,20 @@ class Schedule:
         elif resource == "/find":
             nodes = params.get('nodes', None)
             selection = nodes.split(",") if nodes is not None else None
-            pair = params.get('pair', False) and True
+            nodetypes = params.get('nodetypes','')
+            new_nodes = 'model:apu2' in nodetypes
+            ifCount = params.get('interfaceCount', 1)
+            tail = new_nodes and ifCount >= 1
+            head = new_nodes and ifCount >= 2
+            pair = new_nodes and ifCount >= 3
             tasks, errmsg = rest_api.scheduler.find_slot(
                         nodecount=params.get('nodecount', 1),
                         duration=params.get('duration', 1),
                         start=params.get('start', 0),
-                        nodetypes=params.get('nodetypes', ''),
+                        nodetypes=nodetypes,
                         results=params.get('results', 1),
                         nodes=selection,
-                        pair=pair
+                        head=head, tail=tail, pair=pair
                     )
             if tasks is None:
                 web.ctx.status = '409 Conflict'
@@ -336,11 +341,19 @@ class Experiment:
             duration = params.get('duration', stop-start)
             scripts = params.get('script','').split('|')
 
+            nodetypes = params.get('nodetypes','')
+            new_nodes = 'model:apu2' in nodetypes
+            ifCount = params.get('interfaceCount', 1)
+            tail = new_nodes and ifCount >= 1
+            head = new_nodes and ifCount >= 2
+            pair = new_nodes and ifCount >= 3
+
             alloc, errmsg, extra = rest_api.scheduler.allocate(
                                    user, params['name'],
                                    start, duration,
-                                   params['nodecount'], params['nodetypes'],
-                                   scripts, params.get('options', ''))
+                                   params['nodecount'], nodetypes,
+                                   scripts, params.get('options', ''),
+                                   head=head, tail=tail, pair=pair)
             if alloc is not None:
                 web.header('Location', "/schedules/%i" % alloc)
                 web.ctx.status = '201 Created'
