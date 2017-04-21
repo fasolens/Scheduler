@@ -915,6 +915,8 @@ ORDER BY min_quota DESC, n.heartbeat DESC
                   head=True, tail=False, pair=False):
         """find the next available slot given certain criteria"""
 
+        print("find_slot head=%s, tail=%s, pair=%s" % (head, tail, pair))         
+
         start, duration, nodecount = int(start), int(duration), int(nodecount)
         period = self.get_scheduling_period()
         start = max(start, period[0])
@@ -1002,7 +1004,8 @@ SELECT DISTINCT * FROM (
                          "matching these criteria."
 
     def allocate(self, user, name, start, duration, nodecount,
-                 nodetypes, scripts, options):
+                 nodetypes, scripts, options, 
+                 head=True, tail=False, pair=False):
         """Insert a new task on one or multiple nodes,
         creating one or multible jobs.
 
@@ -1024,10 +1027,7 @@ SELECT DISTINCT * FROM (
                     -- restart
         """
 
-        # SKIP: any time this is called, check existing recurrent experiments
-        #      for extension. This should be a quick check.
-        #      (no recurrence beyond scheduling period allowed yet)
-        # TODO: calculate and check total quota requirements before allocating
+        print("allocate head=%s, tail=%s, pair=%s" % (head, tail, pair))         
 
         try:
             start, duration = int(start), int(duration)
@@ -1147,8 +1147,15 @@ SELECT DISTINCT * FROM (
             return None, "Insufficient data quota.", \
                    {'quota_data': u['quota_data'],
                     'required': total_traffic}
-        pair = len(scripts) == 2
-        apucount = nodecount * 2 if pair else nodecount
+
+        if len(scripts) == 2:
+            pair = True
+        apucount = nodecount
+        if pair and nodecount % 2 != 0:
+            return None, "Node count must be even for paired nodes.", {}
+        elif pair:
+            nodecount = nodecount / 2
+        node_or_pairs = "node pairs" if pair else "nodes"
 
         try:
             available={}
@@ -1156,13 +1163,13 @@ SELECT DISTINCT * FROM (
             for inum, i in enumerate(intervals):
                 nodes, tails = self.get_available_nodes(
                                    preselection, type_require, type_reject,
-                                   i[0], i[1], pair)
+                                   i[0], i[1], head=head, tail=tail, pair=pair)
 
                 if len(nodes) < nodecount:
                     self.db().rollback()
-                    msg = "Only %s/%s nodes are available during " \
+                    msg = "Only %s/%s %s are available during " \
                           "interval %s (%s,%s)." % \
-                          (len(nodes), nodecount, inum + 1, i[0], i[1])
+                          (len(nodes), nodecount, node_or_pairs, inum + 1, i[0], i[1])
                     data = {"code": ERROR_INSUFFICIENT_RESOURCES,
                             "available": len(nodes),
                             "requested": nodecount,
@@ -1225,8 +1232,8 @@ SELECT DISTINCT * FROM (
                           (u['quota_time'] - total_time, ownerid))
                 c.execute("""INSERT INTO quota_journal SELECT ?, "quota_owner_time",
                              ownerid, NULL, current,
-                             "experiment #%s requested %i seconds runtime (%i nodes, %i intervals)" FROM
-                             quota_owner_time WHERE ownerid = ?""" % (expid, total_time, nodecount, num_intervals),
+                             "experiment #%s requested %i seconds runtime (%i %s, %i intervals)" FROM
+                             quota_owner_time WHERE ownerid = ?""" % (expid, total_time, nodecount, node_or_pairs, num_intervals),
                              (now, ownerid))
 
                 c.execute("UPDATE quota_owner_storage SET current = ? "
@@ -1234,8 +1241,8 @@ SELECT DISTINCT * FROM (
                           (u['quota_storage'] - total_storage, ownerid))
                 c.execute("""INSERT INTO quota_journal SELECT ?, "quota_owner_storage",
                              ownerid, NULL, current,
-                             "experiment #%s requested %i bytes (%i nodes, %i intervals)" FROM
-                             quota_owner_storage WHERE ownerid = ?""" % (expid, total_storage, nodecount, num_intervals),
+                             "experiment #%s requested %i bytes (%i %s, %i intervals)" FROM
+                             quota_owner_storage WHERE ownerid = ?""" % (expid, total_storage, nodecount, node_or_pairs, num_intervals),
                              (now, ownerid))
 
                 c.execute("UPDATE quota_owner_data SET current = ? "
@@ -1243,13 +1250,13 @@ SELECT DISTINCT * FROM (
                           (u['quota_data'] - total_traffic, ownerid))
                 c.execute("""INSERT INTO quota_journal SELECT ?, "quota_owner_data",
                              ownerid, NULL, current,
-                             "experiment #%s requested %i bytes (%i nodes, %i intervals)" FROM
-                             quota_owner_data WHERE ownerid = ?""" % (expid, total_traffic, nodecount, num_intervals),
+                             "experiment #%s requested %i bytes (%i %s, %i intervals)" FROM
+                             quota_owner_data WHERE ownerid = ?""" % (expid, total_traffic, nodecount, node_or_pairs, num_intervals),
                              (now, ownerid))
             self.db().commit()
-            return expid, "Created experiment %s on %s nodes " \
+            return expid, "Created experiment %s on %s %s " \
                           "as %s intervals." % \
-                          (expid, len(nodes), len(intervals)), {
+                          (expid, len(nodes), node_or_pairs, len(intervals)), {
                             "experiment": expid,
                             "nodecount": len(nodes),
                             "intervals": len(intervals)
