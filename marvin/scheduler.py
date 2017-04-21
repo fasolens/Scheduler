@@ -915,8 +915,6 @@ ORDER BY min_quota DESC, n.heartbeat DESC
                   head=True, tail=False, pair=False):
         """find the next available slot given certain criteria"""
 
-        print("find_slot head=%s, tail=%s, pair=%s" % (head, tail, pair))         
-
         start, duration, nodecount = int(start), int(duration), int(nodecount)
         period = self.get_scheduling_period()
         start = max(start, period[0])
@@ -1026,8 +1024,6 @@ SELECT DISTINCT * FROM (
                     -- interfaces
                     -- restart
         """
-
-        print("allocate head=%s, tail=%s, pair=%s" % (head, tail, pair))         
 
         try:
             start, duration = int(start), int(duration)
@@ -1150,6 +1146,8 @@ SELECT DISTINCT * FROM (
 
         if len(scripts) == 2:
             pair = True
+        elif pair:
+            scripts = scripts * 2
         apucount = nodecount
         if pair and nodecount % 2 != 0:
             return None, "Node count must be even for paired nodes.", {}
