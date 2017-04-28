@@ -50,8 +50,8 @@ fi;
 QUOTA_DISK_KB=$(( $QUOTA_DISK / 1000 ))
 
 echo -n "Checking for disk space... "
-DISKSPACE=$(df / --output=avail|tail -n1)
-if (( "$DISKSPACE" < $(( 2000000 + $QUOTA_DISK_KB )) )); then
+DISKSPACE=$(df /var/lib/docker --output=avail|tail -n1)
+if (( "$DISKSPACE" < $(( 100000 + $QUOTA_DISK_KB )) )); then
     logger -t container-deploy not enough disk space to deploy container $1;
     exit $ERROR_INSUFFICIENT_DISK_SPACE;
 fi
