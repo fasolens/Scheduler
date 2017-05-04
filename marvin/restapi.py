@@ -201,7 +201,7 @@ class Schedule:
             nodetypes = params.get('nodetypes','')
             new_nodes = 'model:apu2' in nodetypes
             ifCount = int(params.get('interfaceCount', 1))
-            tail = new_nodes and (ifCount >= 1)
+            tail = new_nodes and (ifCount != 2)
             head = new_nodes and (ifCount >= 2)
             pair = new_nodes and (ifCount >= 3)
             tasks, errmsg = rest_api.scheduler.find_slot(
@@ -344,9 +344,9 @@ class Experiment:
             nodetypes = params.get('nodetypes','')
             new_nodes = 'model:apu2' in nodetypes
             ifCount = params.get('interfaceCount', 1)
-            tail = new_nodes and ifCount >= 1
-            head = new_nodes and ifCount >= 2
-            pair = new_nodes and ifCount >= 3
+            tail = new_nodes and (ifCount != 2)
+            head = new_nodes and (ifCount >= 2)
+            pair = new_nodes and (ifCount >= 3)
 
             alloc, errmsg, extra = rest_api.scheduler.allocate(
                                    user, params['name'],
