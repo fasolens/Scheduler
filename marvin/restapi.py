@@ -156,15 +156,9 @@ class Resource:
                 web.ctx.status = ''
                 return error("Wrong user to update this status. (%s)" % name)
             now = int(time.time())
-            rest_api.scheduler.set_heartbeat(nodeid, now)
-
-            if "maintenance" in data.keys():
-                rest_api.scheduler.set_maintenance(nodeid, data['maintenance'])
-            if "interfaces" in data.keys():
-                interfaces=json.loads(data.get('interfaces'))
-                for i in interfaces:
-                    iccid=i.get('iccid')
-                    rest_api.scheduler.set_if_heartbeat(iccid, now)
+            maintenance = data.get('maintenance',0)
+            interfaces=json.loads(data.get('interfaces','[]'))
+            rest_api.scheduler.update_node_status(nodeid, now, maintenance, interfaces)
 
             limit = int(data.get("limit", PREFETCH_COUNT))
             data = rest_api.scheduler.get_schedule(nodeid=nodeid, limit=limit,

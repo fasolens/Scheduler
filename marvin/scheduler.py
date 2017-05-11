@@ -380,16 +380,6 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         self.db().commit()
         return c.rowcount
 
-    def set_maintenance(self, nodeid, flag):
-        c = self.db().cursor()
-        # do not set if node is marked as DISABLED/MISSING, reset to ACTIVE
-        maintenance = NODE_MAINTENANCE if flag == '1' else NODE_ACTIVE
-        c.execute("SELECT status FROM nodes WHERE id=?", (nodeid,))
-        current = c.fetchone()[0]
-        if current != maintenance:
-            c.execute("UPDATE nodes SET status=? WHERE id=?",
-                      (maintenance, nodeid))
-        self.db().commit()
 
     def check_quotas(self):
         now = int(time.time())
@@ -1320,14 +1310,14 @@ UPDATE schedule SET status = ? WHERE expid = ? AND
                        "aborted": aborted
                    }
 
-    def set_heartbeat(self, nodeid, seen):
+    def update_node_status(self, nodeid, seen, maintenance, interfaces):
         c = self.db().cursor()
-        c.execute("UPDATE nodes SET heartbeat=? where id=?", (seen, nodeid))
-        self.db().commit()
 
-    def set_if_heartbeat(self, iccid, seen):
-        c = self.db().cursor()
-        c.execute("UPDATE node_interface SET heartbeat=? where iccid=?", (seen, iccid))
+        status = NODE_MAINTENANCE if maintenance == '1' else NODE_ACTIVE
+        c.execute("UPDATE nodes SET heartbeat=?, status=? where id=? and status!=? and status!=?", (seen, nodeid, status, NODE_DISABLED, NODE_MISSING))
+        for iface in interfaces:
+            iccid = iface.get('iccid',0)
+            c.execute("UPDATE node_interface SET heartbeat=? where iccid=?", (seen, iccid))
         self.db().commit()
 
     def update_entry(self, schedid, status):
