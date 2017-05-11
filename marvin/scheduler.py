@@ -620,6 +620,8 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                     " AND NOT (s.start>%i OR s.stop<%i)" % (stop, start)
                 ) if not past else ""
         orderq = " ORDER BY s.start ASC"
+        if limit > 0:
+            orderq += " LIMIT %i" % limit
         if schedid is not None:
             c.execute(
                 "SELECT * FROM schedule s WHERE s.id = ?" + pastq + orderq, (schedid,))
