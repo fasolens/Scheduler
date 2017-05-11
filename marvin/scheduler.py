@@ -288,30 +288,51 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
 
     def get_nodes(self, nodeid=None, nodetype=None):
         c = self.db().cursor()
+
+        columns = """n.id, n.hostname, n.status, n.heartbeat, t.tag, t.type, 
+                     i.imei as i_imei, i.mccmnc as i_mccmnc, 
+                     i.operator as i_operator, i.iccid as i_iccid, 
+                     i.status as i_status, i.heartbeat as i_heartbeat,
+                     i.quota_current as i_quota_current,
+                     i.quota_last_reset as i_quota_last_reset
+                  """
+                   
+        join1 = "FROM nodes n, node_type t, node_interface i"
+        join2 = "t.nodeid==n.id AND i.nodeid==n.id"
         if nodeid is not None:
-            c.execute("SELECT * FROM nodes WHERE id = ?", (nodeid,))
+            c.execute("SELECT %s %s WHERE n.id = ? AND %s" % (columns, join1, join2), (nodeid,))
         elif nodetype is not None:
             tag, type_ = nodetype.split(":")
-            c.execute("SELECT * FROM nodes WHERE EXISTS "
+            c.execute("SELECT %s %s WHERE EXISTS "
                       "(SELECT nodeid FROM node_type "
-                      " WHERE tag = ? AND type = ?)",
+                      " WHERE tag = ? AND type = ?) AND %s" % (columns, join1, join2),
                       (tag, type_))
         else:
-            c.execute("SELECT * FROM nodes")
-        noderows = c.fetchall()
-        nodes = [dict(x) for x in noderows] or None
-        if nodes:
-            for node in nodes:
-                c.execute(
-                    "SELECT tag, type FROM node_type WHERE nodeid = ?",
-                    (node.get('id'),))
-                typerows = c.fetchall()
-                node.update(dict([(row['tag'], row['type'])
-                                  for row in typerows]))
-                c.execute("SELECT * FROM node_interface WHERE nodeid = ?",
-                          (node.get('id'),))
-                interfaces = c.fetchall()
-                node['interfaces'] = [dict(x) for x in interfaces] or []
+            c.execute("SELECT %s %s WHERE %s" % (columns, join1, join2))
+        noderows = [dict(x) for x in c.fetchall()]
+        nodes = {}
+        for row in noderows:
+            id = row['id']
+            list_ = nodes.get(id,{})
+            tag = None
+            for k,v in row.iteritems():
+                if k=="tag":
+                    tag = v
+                elif k=="type":
+                    list_[tag]=v
+                elif k[0:2] == "i_":
+                    ifaces = list_.get("interfaces",{})
+                    imei = row['i_imei']
+                    iface = ifaces.get(imei,{})
+                    iface[k[2:]] = v
+                    ifaces[imei] = iface
+                    list_["interfaces"] = ifaces
+                else:
+                    list_[k]=v
+            nodes[id]=list_
+        nodes = nodes.values()
+        for n in nodes:
+            n["interfaces"]=n.get("interfaces",{}).values()
         return nodes
 
     def generate_key_pair(self):
