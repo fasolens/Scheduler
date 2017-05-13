@@ -294,7 +294,9 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                      i.operator as i_operator, i.iccid as i_iccid, 
                      i.status as i_status, i.heartbeat as i_heartbeat,
                      i.quota_current as i_quota_current,
-                     i.quota_last_reset as i_quota_last_reset
+                     i.quota_last_reset as i_quota_last_reset,
+                     i.quota_reset_value as i_quota_reset_value,
+                     i.quota_reset_date as i_quota_reset_date
                   """
                    
         join1 = "FROM nodes n, node_type t, node_interface i"
@@ -1309,7 +1311,10 @@ UPDATE schedule SET status = ? WHERE expid = ? AND
         c.execute("UPDATE nodes SET heartbeat=?, status=? where id=? and status!=? and status!=?", (seen, nodeid, status, NODE_DISABLED, NODE_MISSING))
         for iface in interfaces:
             iccid = iface.get('iccid',0)
-            c.execute("UPDATE node_interface SET heartbeat=? where iccid=?", (seen, iccid))
+            host  = int(iface.get('host') or 0)
+            netns = int(iface.get('netns') or 0)
+            quota = host + netns
+            c.execute("UPDATE node_interface SET heartbeat=?, quota_current=quota_reset_value-? where iccid=?", (seen, quota, iccid))
         self.db().commit()
 
     def update_entry(self, schedid, status):
