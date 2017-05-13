@@ -1218,16 +1218,6 @@ SELECT DISTINCT * FROM (
                     if ssh:
                         c.execute("INSERT INTO key_pairs VALUES "
                                   "(?, ?, ?)", (private, public, i[1]))
-                    c.execute("UPDATE node_interface SET "
-                              "quota_current = quota_current - ? "
-                              "WHERE nodeid = ? and status = ?",
-                              (req_traffic, node, DEVICE_CURRENT))
-                    c.execute("""INSERT INTO quota_journal SELECT ?, "node_interface",
-                              NULL, iccid, quota_current,
-                              "experiment #%s requested %i bytes of traffic" FROM
-                              node_interface WHERE nodeid = ? and status = ? """ %
-                              (expid, req_traffic),
-                              (now, node, DEVICE_CURRENT))
 
                 for node in available[i]:
                     insert_task(node, scripts[0])
