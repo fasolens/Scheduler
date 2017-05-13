@@ -178,7 +178,7 @@ class Scheduler:
                 continue
             c.execute("UPDATE node_interface SET status = ? "
                       "WHERE imei = ?",
-                      (DEVICE_CURRENT, node.get('DeviceId'),))
+                      (DEVICE_CURRENT, device.get('DeviceId'),))
             if c.rowcount == 0:
                 c.execute("INSERT OR REPLACE INTO node_interface "
                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
