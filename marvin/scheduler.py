@@ -1308,7 +1308,7 @@ UPDATE schedule SET status = ? WHERE expid = ? AND
         c = self.db().cursor()
 
         status = NODE_MAINTENANCE if maintenance == '1' else NODE_ACTIVE
-        c.execute("UPDATE nodes SET heartbeat=?, status=? where id=? and status!=? and status!=?", (seen, nodeid, status, NODE_DISABLED, NODE_MISSING))
+        c.execute("UPDATE nodes SET heartbeat=?, status=? where id=? and status!=? and status!=?", (seen, status, nodeid, NODE_DISABLED, NODE_MISSING))
         for iface in interfaces:
             iccid = iface.get('iccid',0)
             host  = int(iface.get('host') or 0)
