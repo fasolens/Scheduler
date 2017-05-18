@@ -192,12 +192,18 @@ class Schedule:
         elif resource == "/find":
             nodes = params.get('nodes', None)
             selection = nodes.split(",") if nodes is not None else None
-            nodetypes = params.get('nodetypes','')
-            new_nodes = 'model:apu2' in nodetypes
-            ifCount = int(params.get('interfaceCount', 1))
-            tail = new_nodes and (ifCount != 2)
-            head = new_nodes and (ifCount >= 2)
-            pair = new_nodes and (ifCount >= 3)
+            if selection is None:
+                nodetypes = params.get('nodetypes','')
+                new_nodes = 'model:apu2' in nodetypes
+                ifCount = int(params.get('interfaceCount', 1))
+                tail = new_nodes and (ifCount != 2)
+                head = new_nodes and (ifCount >= 2)
+                pair = new_nodes and (ifCount >= 3)
+            else:
+                nodetypes = ""
+                tail = True
+                head = True
+                pair = False
             tasks, errmsg = rest_api.scheduler.find_slot(
                         nodecount=params.get('nodecount', 1),
                         duration=params.get('duration', 1),
@@ -334,13 +340,25 @@ class Experiment:
             stop = params.get('stop', 0)
             duration = params.get('duration', stop-start)
             scripts = params.get('script','').split('|')
+            options = params.get('options','')
+            selection = None
+            try:
+                selection = json.loads(options).get('nodes') or None
+            except:
+                pass
 
-            nodetypes = params.get('nodetypes','')
-            new_nodes = 'model:apu2' in nodetypes
-            ifCount = params.get('interfaceCount', 1)
-            tail = new_nodes and (ifCount != 2)
-            head = new_nodes and (ifCount >= 2)
-            pair = new_nodes and (ifCount >= 3)
+            if selection is None:
+                nodetypes = params.get('nodetypes','')
+                new_nodes = 'model:apu2' in nodetypes
+                ifCount = params.get('interfaceCount', 1)
+                tail = new_nodes and (ifCount != 2)
+                head = new_nodes and (ifCount >= 2)
+                pair = new_nodes and (ifCount >= 3)
+            else:
+                nodetypes = ''
+                head = True
+                tail = True
+                pair = False
 
             alloc, errmsg, extra = rest_api.scheduler.allocate(
                                    user, params['name'],
