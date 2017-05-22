@@ -440,15 +440,27 @@ class SchedulingClient:
         self.statdir = config['status_directory']
         self.confdir = config['config_directory']
 
-        result = requests.get(
-            config['rest-server'] + "/backend/auth",
-            data=None,
-            cert=self.cert,
-            verify=False)
-        log.debug("Authenticated as %s" % result.text)
-        if result.status_code == 401:
-            log.error("Node certificate not valid.")
-            return
+        while True:
+            try:
+                result = requests.get(
+                    config['rest-server'] + "/backend/auth",
+                    data=None,
+                    cert=self.cert,
+                    verify=False)
+                log.debug("Authenticated as %s" % result.text)
+                if result.status_code == 401:
+                    log.error("Node certificate not valid.")
+                    return
+                else:
+                    break
+            except IOError,ex:
+                if ex.errno == 2:
+                    log.error("Node certificate not found.")
+                    print "Error loading node certificate.", ex
+                else:
+                    print ex
+                    sys.exit(1)
+            time.sleep(300)
 
         self.sysevent(SYSEVENT_SCHEDULING_STARTED)
 
