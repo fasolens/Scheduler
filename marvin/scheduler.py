@@ -117,7 +117,6 @@ class Scheduler:
             self.sync_inventory()
 
     def sync_inventory(self):
-        #return True
         nodes = inventory_api("nodes/status")
         if not nodes:
             log.error("No nodes returned from inventory.")
@@ -1230,28 +1229,28 @@ SELECT DISTINCT * FROM (
                 c.execute("UPDATE schedule SET id = ROWID || ? "\
                           "WHERE expid = ?", (config.get('suffix',''), expid))
 
-                c.execute("UPDATE quota_owner_time SET current = ? "
+            c.execute("UPDATE quota_owner_time SET current = ? "
                           "WHERE ownerid = ?",
                           (u['quota_time'] - total_time, ownerid))
-                c.execute("""INSERT INTO quota_journal SELECT ?, "quota_owner_time",
+            c.execute("""INSERT INTO quota_journal SELECT ?, "quota_owner_time",
                              ownerid, NULL, current,
                              "experiment #%s requested %i seconds runtime (%i %s, %i intervals)" FROM
                              quota_owner_time WHERE ownerid = ?""" % (expid, total_time, nodecount, node_or_pairs, num_intervals),
                              (now, ownerid))
 
-                c.execute("UPDATE quota_owner_storage SET current = ? "
+            c.execute("UPDATE quota_owner_storage SET current = ? "
                           "WHERE ownerid = ?",
                           (u['quota_storage'] - total_storage, ownerid))
-                c.execute("""INSERT INTO quota_journal SELECT ?, "quota_owner_storage",
+            c.execute("""INSERT INTO quota_journal SELECT ?, "quota_owner_storage",
                              ownerid, NULL, current,
                              "experiment #%s requested %i bytes (%i %s, %i intervals)" FROM
                              quota_owner_storage WHERE ownerid = ?""" % (expid, total_storage, nodecount, node_or_pairs, num_intervals),
                              (now, ownerid))
 
-                c.execute("UPDATE quota_owner_data SET current = ? "
+            c.execute("UPDATE quota_owner_data SET current = ? "
                           "WHERE ownerid = ?",
                           (u['quota_data'] - total_traffic, ownerid))
-                c.execute("""INSERT INTO quota_journal SELECT ?, "quota_owner_data",
+            c.execute("""INSERT INTO quota_journal SELECT ?, "quota_owner_data",
                              ownerid, NULL, current,
                              "experiment #%s requested %i bytes (%i %s, %i intervals)" FROM
                              quota_owner_data WHERE ownerid = ?""" % (expid, total_traffic, nodecount, node_or_pairs, num_intervals),
