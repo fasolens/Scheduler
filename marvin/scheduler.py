@@ -599,7 +599,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
 
     def get_schedule(self, schedid=None, expid=None, nodeid=None,
                      userid=None, past=False, start=0, stop=0, limit=0,
-                     private=False):
+                     private=False, compact=False):
         """Return scheduled jobs.
 
         Keywords arguments:
@@ -617,6 +617,10 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
             start = now
         if stop == 0:
             stop = period[1]
+        if compact:
+            selectq = "SELECT nodeid, start, stop"
+        else:
+            selectq = "SELECT *"
         pastq = (
                     " AND NOT (s.start>%i OR s.stop<%i)" % (stop, start)
                 ) if not past else ""
@@ -625,33 +629,34 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
             orderq += " LIMIT %i" % limit
         if schedid is not None:
             c.execute(
-                "SELECT * FROM schedule s WHERE s.id = ?" + pastq + orderq, (schedid,))
+                selectq + " FROM schedule s WHERE s.id = ?" + pastq + orderq, (schedid,))
         elif expid is not None:
             c.execute(
-                "SELECT * FROM schedule s WHERE s.expid = ?" + pastq + orderq, (expid,))
+                selectq + " FROM schedule s WHERE s.expid = ?" + pastq + orderq, (expid,))
         elif nodeid is not None:
             c.execute(
-                "SELECT * FROM schedule s WHERE s.nodeid=?" + pastq + orderq, (nodeid,))
+                selectq + " FROM schedule s WHERE s.nodeid=?" + pastq + orderq, (nodeid,))
         elif userid is not None:
-            c.execute("SELECT * FROM schedule s, experiments t "
+            c.execute(selectq + " FROM schedule s, experiments t "
                       "WHERE s.expid = t.id AND t.ownerid=?" +
                       pastq + orderq, (userid,))
         else:
-            c.execute("SELECT * FROM schedule s WHERE 1=1" + pastq + orderq)
+            c.execute(selectq + " FROM schedule s WHERE 1=1" + pastq + orderq)
         taskrows = c.fetchall()
         tasks = [dict(x) for x in taskrows]
-        for x in tasks:
-            x['deployment_options'] = json.loads(
-                x.get('deployment_options', '{}'))
-            if not private:
-                for key in x['deployment_options'].keys():
-                    if key[0]=='_':
-                        del x['deployment_options'][key]
-        if len(tasks)==1:
+        if compact is False:
             for x in tasks:
-                c.execute("SELECT meter,value FROM traffic_reports WHERE schedid=?",
-                          (x.get('id'),))
-                x['report']=dict([(r[0],r[1]) for r in c.fetchall()])
+                x['deployment_options'] = json.loads(
+                    x.get('deployment_options', '{}'))
+                if not private:
+                    for key in x['deployment_options'].keys():
+                        if key[0]=='_':
+                            del x['deployment_options'][key]
+            if len(tasks)==1:
+                for x in tasks:
+                    c.execute("SELECT meter,value FROM traffic_reports WHERE schedid=?",
+                              (x.get('id'),))
+                    x['report']=dict([(r[0],r[1]) for r in c.fetchall()])
         if limit > 0:
             return tasks[:limit]
         else:

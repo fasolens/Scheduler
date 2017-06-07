@@ -187,8 +187,7 @@ class Schedule:
 
         params = web.input()
         if resource in ["", "/"]:
-            web.ctx.status = '404 Not Found'
-            return error("Displaying collection not allowed.")
+            tasks = rest_api.scheduler.get_schedule(past=False, compact=True)
         elif resource == "/find":
             nodes = params.get('nodes', None)
             selection = nodes.split(",") if nodes is not None else None
