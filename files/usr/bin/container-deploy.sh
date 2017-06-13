@@ -60,12 +60,27 @@ echo "ok."
 
 EXISTED=$(docker images -q $CONTAINER_URL)
 
+echo -n "Checking if a deployment is ongoing... "
+DEPLOYMENT=$(ps ax|grep docker|grep pull||true)
+if [ -z "$DEPLOYMENT" ]; then
+  echo -n "no."
+
+  if [ -z "$(iptables-save | grep -- '-A OUTPUT -p tcp -m tcp --dport 443 -m owner --gid-owner 0 -j ACCEPT')" ]; then
+    iptables -w -I OUTPUT 1 -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT
+    iptables -w -Z OUTPUT 1
+    iptables -w -I INPUT 1 -p tcp --source-port 443 -j ACCEPT
+    iptables -w -Z INPUT 1
+  fi 
+
+elif [[ "$DEPLOYMENT" == *"$CONTAINER_URL"* ]]; then
+  echo -n "yes, this container is being loaded in the background"
+else
+  echo -n "yes, delaying the download"
+  exit $ERROR_CONTAINER_DOWNLOADING
+fi
+
+
 # FIXME: quota monitoring does not work with a background process
-# iptables -w -I OUTPUT 1 -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT
-# iptables -w -Z OUTPUT 1
-# iptables -w -I INPUT 1 -p tcp --source-port 443 -j ACCEPT
-# iptables -w -Z INPUT 1
-# trap "iptables -w -D OUTPUT -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT; iptables -w -D INPUT  -p tcp --source-port 443 -j ACCEPT" EXIT
 
 echo -n "Pulling container..."
 # try for 30 minutes to pull the container, send to background
@@ -87,14 +102,23 @@ if kill -0 "$PROC_ID" >/dev/null 2>&1; then
   exit $ERROR_CONTAINER_DOWNLOADING;
 fi
 
+# the download finished. Do accounting and clear iptables rules
+if [ ! -z "$(iptables-save | grep -- '-A OUTPUT -p tcp -m tcp --dport 443 -m owner --gid-owner 0 -j ACCEPT')" ]; then
+  SENT=$(iptables -vxL OUTPUT 1 | awk '{print $2}')
+  RECEIVED=$(iptables -vxL INPUT 1 | awk '{print $2}')
+  SUM=$(($SENT + $RECEIVED))
+
+  iptables -w -D OUTPUT -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT   || true
+  iptables -w -D INPUT  -p tcp --source-port 443 -j ACCEPT                               || true
+else
+  echo "debug: could not find acounting rule"
+  iptables-save | grep 443 || true
+fi
+
 wait $PROC_ID || {
   echo "exit code $?";
   exit $ERROR_CONTAINER_NOT_FOUND;
 }
-
-# SENT=$(iptables -vxL OUTPUT 1 | awk '{print $2}')
-# RECEIVED=$(iptables -vxL INPUT 1 | awk '{print $2}')
-# SUM=$(($SENT + $RECEIVED))
 
 #retag container image with scheduling id
 docker tag $CONTAINER_URL monroe-$SCHEDID
@@ -103,12 +127,14 @@ if [ -z "$EXISTED" ]; then
 fi
 
 # check if storage quota is exceeded - should never happen
-# if [ "$SUM" -gt "$QUOTA_DISK" ]; then
-#   docker rmi monroe-$SCHEDID || true;
-#   echo  "quota exceeded ($SUM)."
-#   exit $ERROR_QUOTA_EXCEEDED;
-# fi
-# echo  "ok."
+if [ ! -z "$SUM" ]; then 
+  if [ "$SUM" -gt "$QUOTA_DISK" ]; then
+    docker rmi monroe-$SCHEDID || true;
+    echo  "quota exceeded ($SUM)."
+    exit $ERROR_QUOTA_EXCEEDED;
+  fi
+fi
+echo  "ok."
 
 echo -n "Creating file system... "
 
@@ -121,8 +147,11 @@ fi
 mountpoint -q $EXPDIR || {
     mount -t ext4 -o loop,data=journal,nodelalloc,barrier=1 $EXPDIR.disk $EXPDIR;
 }
-JSON=$( echo '{}' | jq .deployment=$SUM )
-echo $JSON > $STATUSDIR/$SCHEDID.traffic
+
+if [[ ! -z "$SUM" ]]; then
+  JSON=$( echo '{}' | jq .deployment=$SUM )
+  echo $JSON > $STATUSDIR/$SCHEDID.traffic
+fi
 echo "ok."
 
 echo "Deployment finished $(date)".
