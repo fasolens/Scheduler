@@ -69,8 +69,8 @@ POLICY_DEFAULT_QUOTA_DATA = 50 * 1000000000     # 50 GB
 POLICY_DEFAULT_QUOTA_STORAGE = 50 * 1000000000  # 50 GB
 POLICY_DEFAULT_QUOTA_MODEM = 50 * 1000000000    # 50 GB
 
-POLICY_TASK_MAX_STORAGE = 1024 * 1000000              # 500 MB per node
-POLICY_TASK_MAX_TRAFFIC = 500 * 1000000              # 500 MB per node TODO
+POLICY_TASK_MAX_STORAGE = 1048576 * 1000        # 1000 MiB per node
+POLICY_TASK_MAX_TRAFFIC = 524288 * 1000         # 500 MiB per interface
 
 NODE_MISSING = 'missing'  # existed in the past, but no longer listed
 NODE_DISABLED = 'disabled'  # set to STORAGE or other in the inventory
