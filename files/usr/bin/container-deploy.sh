@@ -19,6 +19,7 @@ ERROR_CONTAINER_NOT_FOUND=100
 ERROR_INSUFFICIENT_DISK_SPACE=101
 ERROR_QUOTA_EXCEEDED=102
 ERROR_MAINTENANCE_MODE=103
+ERROR_CONTAINER_DOWNLOADING=104
 
 echo -n "Checking for maintenance mode... "
 MAINTENANCE=$(cat /monroe/maintenance/enabled || echo 0)
@@ -59,22 +60,41 @@ echo "ok."
 
 EXISTED=$(docker images -q $CONTAINER_URL)
 
-# TODO: check if exists, restrict to only this process
-iptables -w -I OUTPUT 1 -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT
-iptables -w -Z OUTPUT 1
-iptables -w -I INPUT 1 -p tcp --source-port 443 -j ACCEPT
-iptables -w -Z INPUT 1
-trap "iptables -w -D OUTPUT -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT; iptables -w -D INPUT  -p tcp --source-port 443 -j ACCEPT" EXIT
+# FIXME: quota monitoring does not work with a background process
+# iptables -w -I OUTPUT 1 -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT
+# iptables -w -Z OUTPUT 1
+# iptables -w -I INPUT 1 -p tcp --source-port 443 -j ACCEPT
+# iptables -w -Z INPUT 1
+# trap "iptables -w -D OUTPUT -p tcp --destination-port 443 -m owner --gid-owner 0 -j ACCEPT; iptables -w -D INPUT  -p tcp --source-port 443 -j ACCEPT" EXIT
 
-echo -n "Pulling container... "
-timeout 120 docker pull $CONTAINER_URL || {
+echo -n "Pulling container..."
+# try for 30 minutes to pull the container, send to background
+timeout 1800 docker pull $CONTAINER_URL &
+PROC_ID=$!
+
+# check results every 10 seconds for 60 seconds, or continue next time
+for i in $(seq 1 6); do
+  sleep 10
+  if kill -0 "$PROC_ID" >/dev/null 2>&1; then
+    echo -n "."
+    continue
+  fi
+  break
+done
+
+if kill -0 "$PROC_ID" >/dev/null 2>&1; then
+  echo -n ". delayed; continuing in background.";
+  exit $ERROR_CONTAINER_DOWNLOADING;
+fi
+
+wait $PROC_ID || {
   echo "exit code $?";
   exit $ERROR_CONTAINER_NOT_FOUND;
 }
 
-SENT=$(iptables -vxL OUTPUT 1 | awk '{print $2}')
-RECEIVED=$(iptables -vxL INPUT 1 | awk '{print $2}')
-SUM=$(($SENT + $RECEIVED))
+# SENT=$(iptables -vxL OUTPUT 1 | awk '{print $2}')
+# RECEIVED=$(iptables -vxL INPUT 1 | awk '{print $2}')
+# SUM=$(($SENT + $RECEIVED))
 
 #retag container image with scheduling id
 docker tag $CONTAINER_URL monroe-$SCHEDID
@@ -82,13 +102,13 @@ if [ -z "$EXISTED" ]; then
     docker rmi $CONTAINER_URL
 fi
 
-#check if storage quota is exceeded - should never happen
-if [ "$SUM" -gt "$QUOTA_DISK" ]; then
-  docker rmi monroe-$SCHEDID || true;
-  echo  "quota exceeded ($SUM)."
-  exit $ERROR_QUOTA_EXCEEDED;
-fi
-echo  "ok."
+# check if storage quota is exceeded - should never happen
+# if [ "$SUM" -gt "$QUOTA_DISK" ]; then
+#   docker rmi monroe-$SCHEDID || true;
+#   echo  "quota exceeded ($SUM)."
+#   exit $ERROR_QUOTA_EXCEEDED;
+# fi
+# echo  "ok."
 
 echo -n "Creating file system... "
 
