@@ -51,7 +51,7 @@ fi;
 QUOTA_DISK_KB=$(( $QUOTA_DISK / 1000 ))
 
 echo -n "Checking for disk space... "
-DISKSPACE=$(lvs | grep tp-docker | awk '{print int($5)}')
+DISKSPACE=$(lvs 2>/dev/null | grep tp-docker | awk '{print int($5)}')
 if (( "$DISKSPACE" > 80 )); then
     logger -t container-deploy tp-docker at 80% capacity;
     exit $ERROR_INSUFFICIENT_DISK_SPACE;
