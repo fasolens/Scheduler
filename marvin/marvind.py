@@ -176,6 +176,8 @@ class SchedulingClient:
                 self.set_status(id, "failed; storage quota exceeded during deployment")
             elif pro.returncode == 103:  # MAINTENANCE_MODE
                 self.set_status(id, "delayed; cannot deploy while node is in maintenance mode")
+            elif pro.returncode == 104:  # BACKGROUND_DOWNLOAD
+                self.set_status(id, "delayed; container downloading in background")
             return
 
         now  = int(time.time())
