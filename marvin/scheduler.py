@@ -1319,7 +1319,7 @@ UPDATE schedule SET status = ? WHERE expid = ? AND
             iccid = iface.get('iccid',0)
             host  = int(iface.get('host') or 0)
             netns = int(iface.get('netns') or 0)
-            quota = host + netns
+            quota = host
             c.execute("UPDATE node_interface SET heartbeat=?, quota_current=quota_reset_value-? where iccid=?", (seen, quota, iccid))
         self.db().commit()
 
