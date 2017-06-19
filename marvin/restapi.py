@@ -161,9 +161,9 @@ class Resource:
             rest_api.scheduler.update_node_status(nodeid, now, maintenance, interfaces)
 
             limit = int(data.get("limit", PREFETCH_COUNT))
-            data = rest_api.scheduler.get_schedule(nodeid=nodeid, limit=limit,
+            data = rest_api.scheduler.get_schedule(nodeid=nodeid, limit=limit, interfaces=True,
                                                    stop=now + PREFETCH_LIMIT, private=True)
-            for task in data:
+            for task in data.get('tasks',[]):
                 if task.get('status') == 'defined':
                     rest_api.scheduler.set_status(task.get('id'), 'requested')
             return dumps(data)

@@ -599,7 +599,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
 
     def get_schedule(self, schedid=None, expid=None, nodeid=None,
                      userid=None, past=False, start=0, stop=0, limit=0,
-                     private=False, compact=False):
+                     private=False, compact=False, interfaces=False):
         """Return scheduled jobs.
 
         Keywords arguments:
@@ -658,8 +658,14 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                               (x.get('id'),))
                     x['report']=dict([(r[0],r[1]) for r in c.fetchall()])
         if limit > 0:
-            return tasks[:limit]
-        else:
+            tasks = tasks[:limit]
+        if (interfaces is True) and (nodeid is not None):
+            c.execute("SELECT iccid, quota_current FROM node_interface where nodeid=?", (nodeid,))
+            ifrows = c.fetchall()
+            interfaces = [dict(x) for x in ifrows]
+            return {"interfaces":interfaces, "tasks":tasks}
+        else: 
+            #FIXME: use dict format for all return values
             return tasks
 
     def report_traffic(self, schedid, traffic):
