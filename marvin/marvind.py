@@ -326,9 +326,12 @@ class SchedulingClient:
     def update_routing(self, interfaces):
         max_quota = -sys.maxsize-1
         best_if   = None
+        managed_interfaces = []
         for iface in interfaces:
+            iccid = iface.get('iccid')
+            managed.interfaces.append(iccid)
             if iface.get('quota_current',0) > max_quota:
-                best_if = iface.get('iccid')
+                best_if = iccid
 
         try:
             dlbdata = requests.get('http://localhost:88/dlb')
@@ -338,7 +341,7 @@ class SchedulingClient:
                 iccid = iface.get('iccid',iface.get('mac'))
                 if iccid == best_if:
                     post.append({'iccid':iccid, 'index':index, 'conn':PRIO_100MB})
-                else:
+                elif iccid in managed_interfaces:
                     post.append({'iccid':iccid, 'index':index, 'conn':PRIO_04MB})
             payload = json.dumps({'interfaces':post})
             requests.post('http://localhost:88/dlb', payload)
