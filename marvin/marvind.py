@@ -323,8 +323,29 @@ class SchedulingClient:
 
         return jobs
 
+    def update_routing(self, interfaces):
+        max_quota = -sys.maxsize-1
+        best_if   = None
+        for iface in interfaces:
+            if iface.get('quota_current',0) > max_quota:
+                best_if = iface.get('iccid')
+
+        try:
+            dlbdata = requests.get('http://localhost:88/dlb')
+            post = []
+            for iface in dlbdata.json().get('interfaces'):
+                index = iface.get('index')
+                iccid = iface.get('iccid',iface.get('mac'))
+                if iccid == best_if:
+                    post.append({'iccid':iccid, 'index':index, 'conn':PRIO_100MB})
+                else:
+                    post.append({'iccid':iccid, 'index':index, 'conn':PRIO_04MB})
+            payload = json.dumps({'interfaces':post})
+            requests.post('http://localhost:88/dlb', payload)
+        except:
+            traceback.print_exc()
+
     def update_schedule(self, data):
-        log.debug("update_schedule (%s)" % json.dumps(data))
         schedule = data[:PREFETCH_LIMIT] # download the first three tasks only
         tasks = [x['id'] for x in schedule]
 
@@ -473,17 +494,18 @@ class SchedulingClient:
                 while self.running.is_set():
                     maintenance = self.get_maintenance_mode()
                     interfaces = json.dumps(get_interfaces())
-                    heartbeat = config[
-                        'rest-server'] + "/resources/" + str(self.ID)
+                    route = config['rest-server'] + "/resources/" + str(self.ID)
                     result = requests.put(
-                        heartbeat,
+                        route,
                         data={"limit": PREFETCH_LIMIT,
                               "maintenance": maintenance,
                               "interfaces": interfaces},
                         cert=self.cert,
                         verify=False)
                     if result.status_code == 200 and maintenance != "1":
-                        self.update_schedule(result.json())
+                        result = result.json()
+                        self.update_schedule(result.get('tasks',[]))
+                        self.update_routing(result.get('interfaces',{}))
                         self.post_status()
                     elif maintenance == "1":
                         log.debug("Not deploying in maintenance or development mode.")
