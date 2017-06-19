@@ -51,9 +51,9 @@ fi;
 QUOTA_DISK_KB=$(( $QUOTA_DISK / 1000 ))
 
 echo -n "Checking for disk space... "
-DISKSPACE=$(lvs 2>/dev/null | grep tp-docker | awk '{print int($5)}')
-if (( "$DISKSPACE" > 80 )); then
-    logger -t container-deploy tp-docker at 80% capacity;
+DISKSPACE=$(docker info 2>/dev/null|sed -ne 's/Data Space Available:\(.*\) \(.*\)B/\1\2/p'|numfmt --from=iec)
+if [ $DISKSPACE -lt $QUOTA_DISK ]; then
+    logger -t "container-deploy Insufficient disk space reported: $DISKSPACE";
     exit $ERROR_INSUFFICIENT_DISK_SPACE;
 fi
 echo "ok."
@@ -115,9 +115,16 @@ else
   iptables-save | grep 443 || true
 fi
 
+# these two are acceptable:
+# exit code 0   = successful wait 
+# exit code 127 = PID does not exist anymore. 
+
 wait $PROC_ID || {
-  echo "exit code $?";
-  exit $ERROR_CONTAINER_NOT_FOUND;
+  EXIT_CODE=$?;
+  echo "exit code $EXIT_CODE";
+  if [ $EXIT_CODE -ne 127 ]; then
+      exit $ERROR_CONTAINER_NOT_FOUND;
+  fi
 }
 
 #retag container image with scheduling id
