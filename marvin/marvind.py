@@ -54,6 +54,12 @@ SYSEVENT_SCHEDULING_STARTED = "Scheduling.Started"
 
 PREFETCH_LIMIT = 3
 
+PRIO_04MB = 3
+PRIO_50MB = 11
+PRIO_100MB = 12
+PRIO_500MB  = 14
+PRIO_1000MB = 15
+
 class SchedulingClient:
     running = threading.Event()
     jobs = {}
