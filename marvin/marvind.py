@@ -513,8 +513,11 @@ class SchedulingClient:
                         verify=False)
                     if result.status_code == 200 and maintenance != "1":
                         result = result.json()
-                        self.update_schedule(result.get('tasks',[]))
-                        self.update_routing(result.get('interfaces',{}))
+                        if type(result) is dict: # transition to changed API
+                            self.update_schedule(result.get('tasks',[]))
+                            self.update_routing(result.get('interfaces',{}))
+                        else:
+                            self.update_schedule(result)
                         self.post_status()
                     elif maintenance == "1":
                         log.debug("Not deploying in maintenance or development mode.")
