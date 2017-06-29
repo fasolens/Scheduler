@@ -105,6 +105,8 @@ PM0930 = 77400
 PM1000 = 79200
 HOURS12 = 43200
 
+last_sync = 0
+
 class SchedulerException(Exception):
     pass
 
@@ -117,6 +119,7 @@ class Scheduler:
             self.sync_inventory()
 
     def sync_inventory(self):
+        last_sync = int(time.time())
         nodes = inventory_api("nodes/status")
         if not nodes:
             log.error("No nodes returned from inventory.")
@@ -864,6 +867,11 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         # return empty for overlap with maintenance window
         if self.is_maintenance(start, stop):
             return [], []
+
+        # sync with inventory once per hour
+        now = int(time.time())
+        if now - last_sync > 3600:
+            self.sync_inventory()
 
         c = self.db().cursor()
 
