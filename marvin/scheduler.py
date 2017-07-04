@@ -301,18 +301,17 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                      i.quota_reset_date as i_quota_reset_date
                   """
                    
-        join1 = "FROM nodes n, node_type t, node_interface i"
-        join2 = "t.nodeid==n.id AND i.nodeid==n.id"
+        join = "FROM nodes n LEFT JOIN node_type t on n.id=t.nodeid LEFT JOIN node_interface i on n.id=i.nodeid"
         if nodeid is not None:
-            c.execute("SELECT %s %s WHERE n.id = ? AND %s" % (columns, join1, join2), (nodeid,))
+            c.execute("SELECT %s %s WHERE n.id = ?" % (columns, join), (nodeid,))
         elif nodetype is not None:
             tag, type_ = nodetype.split(":")
             c.execute("SELECT %s %s WHERE EXISTS "
                       "(SELECT nodeid FROM node_type "
-                      " WHERE tag = ? AND type = ?) AND %s" % (columns, join1, join2),
+                      " WHERE tag = ? AND type = ?)" % (columns, join),
                       (tag, type_))
         else:
-            c.execute("SELECT %s %s WHERE %s" % (columns, join1, join2))
+            c.execute("SELECT %s %s" % (columns, join))
         noderows = [dict(x) for x in c.fetchall()]
         nodes = {}
         for row in noderows:
@@ -325,12 +324,13 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                 elif k=="type":
                     list_[tag]=v
                 elif k[0:2] == "i_":
-                    ifaces = list_.get("interfaces",{})
-                    imei = row['i_imei']
-                    iface = ifaces.get(imei,{})
-                    iface[k[2:]] = v
-                    ifaces[imei] = iface
-                    list_["interfaces"] = ifaces
+                    if v is not None:
+                        ifaces = list_.get("interfaces",{})
+                        imei = row['i_imei']
+                        iface = ifaces.get(imei,{})
+                        iface[k[2:]] = v
+                        ifaces[imei] = iface
+                        list_["interfaces"] = ifaces
                 else:
                     list_[k]=v
             nodes[id]=list_
