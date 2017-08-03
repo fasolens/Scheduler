@@ -323,7 +323,11 @@ class SchedulingClient:
                         "atq has changed between calls to atq and at -c.")
                     continue
                 else:
-                    command = output.strip().splitlines()[-1]
+                    output = output.strip().splitlines()
+                    if len(output)==0: 
+                        log.warning("excecuting or stuck task 'at -c %i.'" % atid)
+                        continue
+                    command = output[-1]
                     jobs[atid] = command
                     log.debug("definition of task %s is %s" % (atid, command))
 
