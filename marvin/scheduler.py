@@ -178,11 +178,17 @@ class Scheduler:
                 continue
             if not device.get('MccMnc'):
                 continue
-            c.execute("UPDATE node_interface SET status = ? "
-                      "WHERE imei = ?",
-                      (DEVICE_CURRENT, device.get('DeviceId'),))
-            if c.rowcount == 0:
-                c.execute("INSERT OR REPLACE INTO node_interface "
+
+            c.execute("SELECT * from node_interface "
+                      "WHERE imei = ? AND iccid = ? AND nodeid = ?",
+                      (device.get('DeviceId'), device.get('Iccid'), device.get('NodeId')))
+            result = c.fetchall()
+            if len(result)>0:
+                c.execute("UPDATE node_interface SET status = ? "
+                          "WHERE imei = ? AND iccid = ? AND nodeid = ?",
+                          (DEVICE_CURRENT, device.get('DeviceId'), device.get('Iccid'), device.get('NodeId')))
+            else:
+                c.execute("INSERT INTO node_interface "
                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                           (device.get('NodeId'), device.get('DeviceId'),
                            device.get('MccMnc'), device.get('Operator'),
@@ -303,7 +309,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                    
         join = "FROM nodes n LEFT JOIN node_type t on n.id=t.nodeid LEFT JOIN node_interface i on n.id=i.nodeid"
         if nodeid is not None:
-            c.execute("SELECT %s %s WHERE n.id = ?" % (columns, join), (nodeid,))
+            c.execute("SELECT %s %s WHERE n.id = ? AND i.status != ?" % (columns, join), (nodeid, DEVICE_HISTORIC))
         elif nodetype is not None:
             tag, type_ = nodetype.split(":")
             c.execute("SELECT %s %s WHERE EXISTS "
