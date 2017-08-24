@@ -162,7 +162,8 @@ class Resource:
 
             limit = int(data.get("limit", PREFETCH_COUNT))
             data = rest_api.scheduler.get_schedule(nodeid=nodeid, limit=limit, interfaces=True,
-                                                   stop=now + PREFETCH_LIMIT, private=True)
+                                                   stop=now + PREFETCH_LIMIT, private=True,
+                                                   heartbeat=True)
             for task in data.get('tasks',[]):
                 if task.get('status') == 'defined':
                     rest_api.scheduler.set_status(task.get('id'), 'requested')

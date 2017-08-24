@@ -611,7 +611,8 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
 
     def get_schedule(self, schedid=None, expid=None, nodeid=None,
                      userid=None, past=False, start=0, stop=0, limit=0,
-                     private=False, compact=False, interfaces=False):
+                     private=False, compact=False, interfaces=False,
+                     heartbeat=False):
         """Return scheduled jobs.
 
         Keywords arguments:
@@ -656,13 +657,25 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
             c.execute(selectq + " FROM schedule s WHERE 1=1" + pastq + orderq)
         taskrows = c.fetchall()
         tasks = [dict(x) for x in taskrows]
-        # TODO: handle LPQ tasks -
-        # if start == -1 and
-        #    this is a heartbeat and
-        #    there is (stop-0) room in the schedule 
-        # then
-        #    write start = now, stop = now + stop for this schedule
-        #    return task as first task in task list
+
+        # handle LPQ tasks: if start is undefined...
+        num_tasks = len(tasks)
+        if num_tasks > 0 and tasks[0]['start'] == -1 and heartbeat:
+            lpq_task = tasks[0]
+            duration = lpq_task['stop']
+            next_tasks = [t for t in tasks if t.get('start') != -1]
+            # and there is an available time window...
+            if len(next_tasks) == 0 or \
+               next_tasks[0]['start'] > now + POLICY_TASK_PADDING * 2 + duration:
+                   # then set execution time to now.
+                   lpq_task['start'] = now + POLICY_TASK_PADDING
+                   lpq_task['stop'] = now + POLICY_TASK_PADDING + duration
+                   c.execute("UPDATE schedule SET start=?, stop=? WHERE id=?",
+                             (lpq_task['start'], lpq_task['stop'], lpq_task['id']))
+                   self.db().commit()
+                   # and return one LPQ task, before anything scheduled
+                   tasks = lpq_task + next_tasks
+
         if compact is False:
             for x in tasks:
                 x['deployment_options'] = json.loads(
