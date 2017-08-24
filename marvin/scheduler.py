@@ -93,11 +93,14 @@ NODE_TYPE_SPECIAL = 'special' # have to be explicitly requested
 DEVICE_HISTORIC = 'historic'
 DEVICE_CURRENT = 'current'
 
-EXPERIMENT_ACTIVE='active' 
+EXPERIMENT_ACTIVE='active'
 EXPERIMENT_ARCHIVED='archived'
+
+LPQ_SCHEDULING = -1
 
 QUOTA_MONTHLY = 0
 QUOTA_DAYOFMONTH = 1
+
 
 AM0930 = 34200
 AM1000 = 36000
@@ -223,7 +226,7 @@ class Scheduler:
 CREATE TABLE IF NOT EXISTS nodes (id INTEGER PRIMARY KEY ASC,
     hostname TEXT NOT NULL, status TEXT, heartbeat INTEGER);
 CREATE TABLE IF NOT EXISTS node_type (nodeid INTEGER NOT NULL,
-    tag TEXT NOT NULL, type TEXT NOT NULL, volatile INTEGER NOT NULL DEFAULT 1, 
+    tag TEXT NOT NULL, type TEXT NOT NULL, volatile INTEGER NOT NULL DEFAULT 1,
     FOREIGN KEY (nodeid) REFERENCES nodes(id),
     PRIMARY KEY (nodeid, tag));
 CREATE TABLE IF NOT EXISTS node_pair (headid INTEGER NOT NULL,
@@ -257,7 +260,7 @@ CREATE TABLE IF NOT EXISTS experiments (id INTEGER PRIMARY KEY ASC,
     name TEXT NOT NULL, ownerid INTEGER NOT NULL, type TEXT NOT NULL,
     script TEXT NOT NULL, start INTEGER NOT NULL, stop INTEGER NOT NULL,
     recurring_until INTEGER NOT NULL, options TEXT,
-    status TEXT, 
+    status TEXT,
     FOREIGN KEY (ownerid) REFERENCES owners(id));
 CREATE TABLE IF NOT EXISTS schedule (id TEXT PRIMARY KEY ASC,
     nodeid INTEGER, expid INTEGER, start INTEGER, stop INTEGER,
@@ -288,7 +291,7 @@ CREATE INDEX IF NOT EXISTS k_start      ON schedule(start);
 CREATE INDEX IF NOT EXISTS k_stop       ON schedule(stop);
 CREATE INDEX IF NOT EXISTS k_expid      ON schedule(expid);
 CREATE INDEX IF NOT EXISTS k_times      ON quota_journal(timestamp);
-CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);      
+CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
 
             """.split(";"):
                 c.execute(statement.strip())
@@ -297,16 +300,16 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
     def get_nodes(self, nodeid=None, nodetype=None):
         c = self.db().cursor()
 
-        columns = """n.id, n.hostname, n.status, n.heartbeat, t.tag, t.type, 
-                     i.imei as i_imei, i.mccmnc as i_mccmnc, 
-                     i.operator as i_operator, i.iccid as i_iccid, 
+        columns = """n.id, n.hostname, n.status, n.heartbeat, t.tag, t.type,
+                     i.imei as i_imei, i.mccmnc as i_mccmnc,
+                     i.operator as i_operator, i.iccid as i_iccid,
                      i.status as i_status, i.heartbeat as i_heartbeat,
                      i.quota_current as i_quota_current,
                      i.quota_last_reset as i_quota_last_reset,
                      i.quota_reset_value as i_quota_reset_value,
                      i.quota_reset_date as i_quota_reset_date
                   """
-                   
+
         join = "FROM nodes n LEFT JOIN node_type t on n.id=t.nodeid LEFT JOIN node_interface i on n.id=i.nodeid"
         if nodeid is not None:
             c.execute("SELECT %s %s WHERE n.id = ? AND i.status != ?" % (columns, join), (nodeid, DEVICE_HISTORIC))
@@ -355,7 +358,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         self.db().commit()
         c.execute("SELECT public FROM key_pairs")
         data = c.fetchall()
-        keys = [dict(x)['public'] for x in data] 
+        keys = [dict(x)['public'] for x in data]
         return keys
 
     def set_node_types(self, nodeid, nodetypes):
@@ -382,7 +385,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         c.execute("SELECT id FROM nodes")
         nodes = [str(x[0]) for x in c.fetchall()]
         if not headid in nodes or (tailid is not None and not tailid in nodes):
-            return "Node id does not exist." 
+            return "Node id does not exist."
         c.execute("DELETE FROM node_pair WHERE headid=? OR tailid=?", (headid, headid))
         if tailid is not None:
             c.execute("DELETE FROM node_pair WHERE headid=? OR tailid=?", (tailid, tailid))
@@ -544,7 +547,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
 
     def first_of_next_month(self):
         today = datetime.date.today()
-        yr = today.year 
+        yr = today.year
         if today.month == 12:
             yr = yr + 1
         return datetime.datetime(year=yr,
@@ -673,7 +676,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
             ifrows = c.fetchall()
             interfaces = [dict(x) for x in ifrows]
             return {"interfaces":interfaces, "tasks":tasks}
-        else: 
+        else:
             #FIXME: use dict format for all return values
             return tasks
 
@@ -719,7 +722,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
 
     def get_experiments(self, expid=None, userid=None, nodeid=None, schedid=None, archived=False):
         c = self.db().cursor()
-        archq = " AND e.status='%s' " % EXPERIMENT_ACTIVE if not archived else "" 
+        archq = " AND e.status='%s' " % EXPERIMENT_ACTIVE if not archived else ""
         if expid is not None:
             c.execute(
                 "SELECT * FROM experiments e WHERE e.id=?" + archq, (expid,))
@@ -765,9 +768,9 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                 experiments[i]['summary'] = result
 
             experiments[i]['options'] = json.loads(task.get('options', '{}'))
-            for key in experiments[i]['options'].keys():  
+            for key in experiments[i]['options'].keys():
                 if key[0]=='_':
-                    del experiments[i]['options'][key]   
+                    del experiments[i]['options'][key]
             if 'recurring_until' in experiments[i]:
                 del experiments[i]['recurring_until']
         return experiments or None
@@ -837,7 +840,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         duration = stop-start
         tod = start % 86400
         fin = tod + duration
-        if (tod < AM1000) and (fin > AM0930): 
+        if (tod < AM1000) and (fin > AM0930):
             return True
         if (tod < PM1000) and (fin > PM0930):
             return True
@@ -853,16 +856,16 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
 
         segments = []
         for t in xrange(day + AM0930, stop, HOURS12):
-            if (t>start and t<stop): 
+            if (t>start and t<stop):
                 segments.append(t)
         for t in xrange(day + AM1000, stop, HOURS12):
-            if (t>start and t<stop): 
+            if (t>start and t<stop):
                 segments.append(t)
         return segments
-        
+
 
     def get_available_nodes(self, nodes, type_require,
-                            type_reject, start, stop, 
+                            type_reject, start, stop,
                             head=True, tail=False, pair=False):
         """ Select all active nodes not having a task scheduled between
             start and stop from the set of nodes matching type_accept and
@@ -871,7 +874,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         # TODO: take node_interface quota into account
 
         # return empty for overlap with maintenance window
-        if self.is_maintenance(start, stop):
+        if start != -1 and self.is_maintenance(start, stop):
             return [], []
 
         # sync with inventory once per hour
@@ -897,12 +900,15 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         for type_and in type_reject:
             query += "  AND n.id NOT IN (SELECT nodeid FROM node_type " \
                      "  WHERE tag = ? AND type = ?)"
-        query += """
+        if start != -1:
+            query += """
 AND n.id NOT IN (
     SELECT DISTINCT nodeid FROM schedule s
     WHERE shared = 0 AND NOT ((s.stop + ? < ?) OR (s.start - ? > ?))
 )
-AND n.heartbeat > ?
+AND n.heartbeat > ? """
+
+        query += """
 GROUP BY n.id
 ORDER BY min_quota DESC, n.heartbeat DESC
                  """
@@ -912,7 +918,7 @@ ORDER BY min_quota DESC, n.heartbeat DESC
         if (abs(start-now) < 1200) or (start==0):
             # short heartbeat filter for immediate starts
             alive_after = now - 600
-        if nodes is not None:
+        if start == -1 or nodes is not None:
             # do not apply heartbeat filter on preselection
             alive_after = 0
 
@@ -928,7 +934,7 @@ ORDER BY min_quota DESC, n.heartbeat DESC
         c.execute("SELECT * from node_pair") # TODO: cache this, when calling sync
         pairrows = c.fetchall()
         heads = dict(pairrows)
-     
+
         if pair:
             headn = filter(lambda x: x in heads and heads[x] in nodes, nodes)
             tailn = [heads[x] for x in headn]
@@ -955,7 +961,7 @@ ORDER BY min_quota DESC, n.heartbeat DESC
             return None, "nodetype expression could not be parsed. "+ex.message
 
     def find_slot(self, nodecount=1, duration=1, start=0,
-                  nodetypes="", nodes=None, results=1, 
+                  nodetypes="", nodes=None, results=1,
                   head=True, tail=False, pair=False):
         """find the next available slot given certain criteria"""
 
@@ -1021,7 +1027,7 @@ SELECT DISTINCT * FROM (
 
             nodes, tails = self.get_available_nodes(
                                selection,
-                               type_require, type_reject, s0, segments[c], 
+                               type_require, type_reject, s0, segments[c],
                                head, tail, pair)
             if len(nodes) >= nodecount:
                 slots.append({
@@ -1046,7 +1052,7 @@ SELECT DISTINCT * FROM (
                          "matching these criteria."
 
     def allocate(self, user, name, start, duration, nodecount,
-                 nodetypes, scripts, options, 
+                 nodetypes, scripts, options,
                  head=True, tail=False, pair=False):
         """Insert a new task on one or multiple nodes,
         creating one or multible jobs.
@@ -1161,13 +1167,22 @@ SELECT DISTINCT * FROM (
             start = self.get_scheduling_period()[0] + 10
         stop = start + duration
 
-        try:
-            intervals = self.get_recurrence_intervals(start, stop, opts)
-            if len(intervals)<1:
-                return None, "Something unexpected happened "\
-                             "(no intervals generated)", {}
-        except SchedulerException as ex:
-            return None, ex.message, {}
+        # LPQ scheduling: start when node is available, no pre-deployment
+        lpq = False
+        if start == LPQ_SCHEDULING:  # -1
+            lpq = True
+            stop = -1
+            intervals = (-1,-1)
+
+        else:
+            try:
+                intervals = self.get_recurrence_intervals(start, stop, opts)
+                if len(intervals)<1:
+                    return None, "Something unexpected happened "\
+                                 "(no intervals generated)", {}
+            except SchedulerException as ex:
+                return None, ex.message, {}
+
         until = int(opts.get('until', 0))
 
         num_intervals = len(intervals)
@@ -1199,6 +1214,21 @@ SELECT DISTINCT * FROM (
             nodecount = nodecount / 2
         node_or_pairs = "node pairs" if pair else "nodes"
 
+
+        def insert_task (node, script, keypairs):
+            deployment_opts['script'] = script
+            if keypairs:
+                private, public = keypairs.pop()
+                deployment_opts['_ssh.private'] = private
+                deployment_opts['ssh.public'] = public
+            c.execute("INSERT INTO schedule VALUES "
+                      "(NULL, ?, ?, ?, ?, ?, ?, ?)",
+                      (node, expid, i[0], i[1], 'defined',
+                       shared, json.dumps(deployment_opts)))
+            if keypairs:
+                c.execute("INSERT INTO key_pairs VALUES "
+                          "(?, ?, ?)", (private, public, i[1]))
+
         try:
             available={}
             avl_tails={}
@@ -1226,8 +1256,7 @@ SELECT DISTINCT * FROM (
                 available[i]=nodes
                 avl_tails[i]=tails
 
-            if ssh: 
-                keypairs = [self.generate_key_pair() for x in xrange(apucount * len(intervals))]
+            keypairs = [self.generate_key_pair() for x in xrange(apucount * len(intervals))] if ssh else None
             now = int(time.time())
 
             # no write queries until this point
@@ -1237,25 +1266,10 @@ SELECT DISTINCT * FROM (
                        until, json.dumps(opts), EXPERIMENT_ACTIVE))
             expid = c.lastrowid
             for inum, i in enumerate(intervals):
-
-                def insert_task (node, script):
-                    deployment_opts['script'] = script
-                    if ssh:
-                        private, public = keypairs.pop()
-                        deployment_opts['_ssh.private'] = private
-                        deployment_opts['ssh.public'] = public
-                    c.execute("INSERT INTO schedule VALUES "
-                              "(NULL, ?, ?, ?, ?, ?, ?, ?)",
-                              (node, expid, i[0], i[1], 'defined',
-                               shared, json.dumps(deployment_opts)))
-                    if ssh:
-                        c.execute("INSERT INTO key_pairs VALUES "
-                                  "(?, ?, ?)", (private, public, i[1]))
-
                 for node in available[i]:
-                    insert_task(node, scripts[0])
+                    insert_task(node, scripts[0], keypairs)
                 for node in avl_tails[i]:
-                    insert_task(node, scripts[1])
+                    insert_task(node, scripts[1], keypairs)
 
                 # set scheduling ID for all inserted rows, append suffix
                 c.execute("UPDATE schedule SET id = ROWID || ? "\
@@ -1314,7 +1328,7 @@ SELECT DISTINCT * FROM (
             self.db().commit()
             return 1, "Ok. Deleted experiment and scheduling entries", {}
         elif statuses.issubset(set(['stopped', 'finished', 'failed', 'canceled', 'aborted'])):
-            c.execute("UPDATE experiments SET status=? WHERE id=?", (EXPERIMENT_ARCHIVED, expid)) 
+            c.execute("UPDATE experiments SET status=? WHERE id=?", (EXPERIMENT_ARCHIVED, expid))
             self.db().commit()
             return 1, "Ok. Archived experiment.", {}
         else:
