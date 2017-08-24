@@ -660,10 +660,10 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
 
         # handle LPQ tasks: if start is undefined...
         num_tasks = len(tasks)
+        next_tasks = [t for t in tasks if t.get('start') != -1]
         if num_tasks > 0 and tasks[0]['start'] == -1 and heartbeat:
             lpq_task = tasks[0]
             duration = lpq_task['stop']
-            next_tasks = [t for t in tasks if t.get('start') != -1]
             # and there is an available time window...
             if len(next_tasks) == 0 or \
                next_tasks[0]['start'] > now + POLICY_TASK_PADDING * 2 + duration:
@@ -675,6 +675,9 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                    self.db().commit()
                    # and return one LPQ task, before anything scheduled
                    tasks = lpq_task + next_tasks
+        else:
+            # do not return lpq tasks, even if they cannot be scheduled
+            tasks = next_tasks
 
         if compact is False:
             for x in tasks:
