@@ -634,7 +634,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         else:
             selectq = "SELECT *"
         pastq = (
-                    " AND NOT (s.start>%i OR s.stop<%i)" % (stop, start)
+                    " AND NOT (s.start>%i OR s.stop<%i) OR s.start = -1 " % (stop, start)
                 ) if not past else ""
         orderq = " ORDER BY s.start ASC"
         if limit > 0:
@@ -656,6 +656,13 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
             c.execute(selectq + " FROM schedule s WHERE 1=1" + pastq + orderq)
         taskrows = c.fetchall()
         tasks = [dict(x) for x in taskrows]
+        # TODO: handle LPQ tasks -
+        # if start == -1 and
+        #    this is a heartbeat and
+        #    there is (stop-0) room in the schedule 
+        # then
+        #    write start = now, stop = now + stop for this schedule
+        #    return task as first task in task list
         if compact is False:
             for x in tasks:
                 x['deployment_options'] = json.loads(
@@ -1168,11 +1175,12 @@ SELECT DISTINCT * FROM (
         stop = start + duration
 
         # LPQ scheduling: start when node is available, no pre-deployment
+        # TODO: preserve duration
         lpq = False
         if start == LPQ_SCHEDULING:  # -1
             lpq = True
             stop = -1
-            intervals = (-1,-1)
+            intervals = (-1, duration)
 
         else:
             try:
