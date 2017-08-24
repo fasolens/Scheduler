@@ -50,8 +50,8 @@ for everyone:
 
   * GET version
   * GET backend/auth [verify SSL certificate]
-  * GET backend/activity [show activity statistics] 
-  * GET backend/pubkeys [show public keys for running experiments] 
+  * GET backend/activity [show activity statistics]
+  * GET backend/pubkeys [show public keys for running experiments]
 
 for all authenticated clients:
 
@@ -95,7 +95,7 @@ only for a node with the given id # (role: node)
   * PUT resources/#       [send heartbeat]
   * PUT schedules/#       [status code or JSON traffic report, see below.]
 
-To update the node status, send the schedules/# PUT request with the following 
+To update the node status, send the schedules/# PUT request with the following
 fields:
 
   * schedid    - the scheduling ID of the task
@@ -120,7 +120,7 @@ These status codes are final and cannot be overridden:
 All status codes can be suffixed with ; and a reason (free text).
 
 A valid traffic report is a JSON dictionary, and will overwrite the last
-traffic report for the same scheduling ID. To send a traffic report, provide 
+traffic report for the same scheduling ID. To send a traffic report, provide
 the keys
 
   * schedid    - the scheduling ID of the task
@@ -140,7 +140,7 @@ Quota reimbursements are not implemented yet.
 The following parameters are used to schedule an experiment:
 
   * taskname  - an arbitrary identifier
-  * start     - a UNIX time stamp, the start time (may be left 0 to indicate ASAP)
+  * start     - a UNIX time stamp, the start time (may be left 0 to indicate ASAP, -1 for LPQ)
   * stop      - a UNIX time stamp, the stop time **OR**
   * duration  - runtime of the experiment in seconds.
   * nodecount - the number of nodes to allocate this experiment to
@@ -150,12 +150,18 @@ The following parameters are used to schedule an experiment:
                 Supports the operators OR(|), NOT(-) and AND(,) in this strict order of precedence.
                 EXAMPLE: type:testing,country:es,-model:apu2d
   * script    - the experiment to execute, in the form of one or two docker pull URL, pipe-separated
-                If two URL are provided, the scheduler will select associated node pairs and 
+                If two URL are provided, the scheduler will select associated node pairs and
                 send the first URL to the node head, the second URL to the node tail.
+
+ASAP scheduling: The scheduler selects the next available time slot after now.
+
+LPQ scheduling: Low priority, queued. No time slot is assigned to the task. Instead, whenever
+the node is sending a heartbeat and has available capacity, this task will be immediately executed.
+LPQ scheduling will ignore recurrence parameters.
 
 These are defined as scheduling options, interpreted by the scheduling server:
 
-* options   - (optional) additional scheduling options. 
+* options   - (optional) additional scheduling options.
     * nodes         - a specific list of node ids to select for scheduling
     * shared        - (default 0) 1 if this is a passive measurement experiment
     * recurrence    - (default 0) 'simple' for a basic recurrence model
@@ -166,7 +172,7 @@ These are defined as scheduling options, interpreted by the scheduling server:
     * traffic     - traffic quota, per interface, bidirectional
     * ssh         - if provided (any value), the scheduler generates a public/private key pair stored in the options ssh.public and _ssh.private
 
-Options that are required to be known during deployment are passed to the node as 
+Options that are required to be known during deployment are passed to the node as
 deployment parameters.
 
 The options parameter should be x-www-form-urlencoded, that is separated by ampersands
@@ -174,9 +180,9 @@ and in the form key=value, or in the form of a JSON object.
 
 #### Container parameters:
 
-All options (including user provided keys that are not handled by the 
-scheduler) are passed to the container in the /monroe/config file. 
-Options prefixed with an underscore _ are hidden in the public user 
+All options (including user provided keys that are not handled by the
+scheduler) are passed to the container in the /monroe/config file.
+Options prefixed with an underscore _ are hidden in the public user
 interface and API, and only passed to the container.
 
 #### Authentication:
