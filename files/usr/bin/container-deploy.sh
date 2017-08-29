@@ -162,6 +162,7 @@ fi
 echo "ok."
 
 echo "Deployment finished $(date)".
+sysevent -t Scheduling.Task.Deployed -k id -v $SCHEDID
 # moving deployment files and switching redirects
 cat /tmp/container-deploy >> $EXPDIR/deploy.log
 rm /tmp/container-deploy
