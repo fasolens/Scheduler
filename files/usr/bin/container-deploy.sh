@@ -79,8 +79,9 @@ else
   exit $ERROR_CONTAINER_DOWNLOADING
 fi
 
-
 # FIXME: quota monitoring does not work with a background process
+
+sysevent -t Scheduling.Task.Deploying -k id -v $SCHEDID
 
 echo -n "Pulling container..."
 # try for 30 minutes to pull the container, send to background
