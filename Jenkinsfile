@@ -1,6 +1,6 @@
 import java.text.SimpleDateFormat
 jobName = "python-marvin"
-version = "0.1.63"
+version = "0.1.64"
 build_dir = "deb_dist"
 
 node ('dockerslave') {
