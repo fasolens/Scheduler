@@ -123,10 +123,14 @@ class Scheduler:
 
     def sync_inventory(self):
         last_sync = int(time.time())
-        nodes = inventory_api("nodes/status")
-        if not nodes:
-            log.error("No nodes returned from inventory.")
-            sys.exit(1)
+        try:
+            nodes = inventory_api("nodes/status")
+            if not nodes:
+                log.warning("No nodes returned from inventory.")
+                return
+        except:
+            log.warning("Inventory synchronization failed.")
+            return
 
         c = self.db().cursor()
 

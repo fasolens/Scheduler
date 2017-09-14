@@ -339,7 +339,7 @@ class SchedulingClient:
         managed_interfaces = []
         for iface in interfaces:
             iccid = iface.get('iccid')
-            managed.interfaces.append(iccid)
+            managed_interfaces.append(iccid)
             if iface.get('quota_current',0) > max_quota:
                 best_if = iccid
 

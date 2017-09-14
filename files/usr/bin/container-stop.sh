@@ -32,6 +32,7 @@ if [ $(docker inspect -f "{{.State.Running}}" $CID 2>/dev/null) ]; then
 else
   echo "Container is no longer running.";
 fi
+sysevent -t Scheduling.Task.Stopped -k id -v $SCHEDID
 
 if [ -d $BASEDIR/$SCHEDID ]; then
   echo "Retrieving container logs:"

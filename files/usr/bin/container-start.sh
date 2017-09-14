@@ -143,4 +143,5 @@ if [ -z "$STATUS" ]; then
 else
   echo $STATUS > $STATUSDIR/$SCHEDID.status
 fi
+sysevent -t Scheduling.Task.Started -k id -v $SCHEDID
 echo "Startup finished $(date)."
