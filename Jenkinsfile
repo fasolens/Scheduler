@@ -1,6 +1,6 @@
 import java.text.SimpleDateFormat
 jobName = "python-marvin"
-version = "0.1.64"
+version = "0.1.65"
 build_dir = "deb_dist"
 
 node ('dockerslave') {
@@ -26,14 +26,14 @@ node ('dockerslave') {
 
     stage ('Build') {
         sh "python setup.py --command-packages=stdeb.command bdist_deb"
-        
+
         sh "chmod +x versionize/versionize.sh; cp versionize/versionize.sh deb_dist/"
         dir(build_dir) {
             sh "./versionize.sh ${jobName}_0.1.0-1_all.deb ${jobName} ${version} ${shortCommit}"
             sh "rm ${jobName}_0.1.0-1_all.deb"
         }
     }
-    
+
     stage ('Archive artifacts') {
         archiveArtifacts "${build_dir}/*.deb"
     }
