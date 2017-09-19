@@ -13,6 +13,7 @@ import sqlite3 as db
 import sys
 from thread import get_ident
 import threading
+import traceback
 import time
 
 from Crypto.PublicKey import RSA
@@ -949,11 +950,12 @@ ORDER BY min_quota DESC, n.heartbeat DESC
             # do not apply heartbeat filter on preselection
             alive_after = 0
 
-        c.execute(query, [NODE_ACTIVE] +
-                  list(chain.from_iterable(type_require)) +
-                  list(chain.from_iterable(type_reject)) +
-                  [POLICY_TASK_PADDING, start, POLICY_TASK_PADDING, stop,
-                   alive_after])
+        parameters = [NODE_ACTIVE] + list(chain.from_iterable(type_require)) + \
+                                     list(chain.from_iterable(type_reject)) 
+        if start != -1:
+            parameters += [POLICY_TASK_PADDING, start, POLICY_TASK_PADDING, stop]
+            parameters += [alive_after]
+        c.execute(query, parameters)
 
         noderows = c.fetchall()
         nodes = [x[0] for x in noderows if x[1] is not None]
@@ -1200,7 +1202,7 @@ SELECT DISTINCT * FROM (
         if start == LPQ_SCHEDULING:  # -1
             lpq = True
             stop = -1
-            intervals = (-1, duration)
+            intervals = [(-1, duration)]
 
         else:
             try:
