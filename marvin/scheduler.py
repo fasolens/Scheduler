@@ -1269,11 +1269,14 @@ SELECT DISTINCT * FROM (
 
                 if len(nodes) < nodecount:
                     self.db().rollback()
-                    utcstart = datetime.datetime.utcfromtimestamp(int(i[0])).isoformat()
-                    utcstop  = datetime.datetime.utcfromtimestamp(int(i[1])).isoformat()
-                    msg = "Only %s/%s %s are available during " \
-                          "interval %s (%s to %s)." % \
-                          (len(nodes), nodecount, node_or_pairs, inum + 1, utcstart, utcstop)
+                    if i[0] == -1:
+                        msg = "This node is not available for scheduling." 
+                    else:
+                        utcstart = datetime.datetime.utcfromtimestamp(int(i[0])).isoformat()
+                        utcstop  = datetime.datetime.utcfromtimestamp(int(i[1])).isoformat()
+                        msg = "Only %s/%s %s are available during " \
+                              "interval %s (%s to %s)." % \
+                              (len(nodes), nodecount, node_or_pairs, inum + 1, utcstart, utcstop)
                     data = {"code": ERROR_INSUFFICIENT_RESOURCES,
                             "available": len(nodes),
                             "requested": nodecount,
