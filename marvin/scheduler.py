@@ -640,7 +640,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         else:
             selectq = "SELECT *"
         pastq = (
-                    " AND NOT (s.start>%i OR s.stop<%i) OR s.start = -1 " % (stop, start)
+                    " AND (NOT (s.start>%i OR s.stop<%i) OR s.start = -1) " % (stop, start)
                 ) if not past else ""
         orderq = " ORDER BY s.start ASC"
         if limit > 0:
@@ -679,7 +679,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                              (lpq_task['start'], lpq_task['stop'], lpq_task['id']))
                    self.db().commit()
                    # and return one LPQ task, before anything scheduled
-                   tasks = lpq_task + next_tasks
+                   tasks = [lpq_task] + next_tasks
         else:
             # do not return lpq tasks, even if they cannot be scheduled
             tasks = next_tasks
