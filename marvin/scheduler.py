@@ -13,6 +13,7 @@ import sqlite3 as db
 import sys
 from thread import get_ident
 import threading
+import traceback
 import time
 
 from Crypto.PublicKey import RSA
@@ -639,7 +640,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         else:
             selectq = "SELECT *"
         pastq = (
-                    " AND NOT (s.start>%i OR s.stop<%i) OR s.start = -1 " % (stop, start)
+                    " AND (NOT (s.start>%i OR s.stop<%i) OR s.start = -1) " % (stop, start)
                 ) if not past else ""
         orderq = " ORDER BY s.start ASC"
         if limit > 0:
@@ -678,7 +679,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                              (lpq_task['start'], lpq_task['stop'], lpq_task['id']))
                    self.db().commit()
                    # and return one LPQ task, before anything scheduled
-                   tasks = lpq_task + next_tasks
+                   tasks = [lpq_task] + next_tasks
         else:
             # do not return lpq tasks, even if they cannot be scheduled
             tasks = next_tasks
@@ -949,11 +950,12 @@ ORDER BY min_quota DESC, n.heartbeat DESC
             # do not apply heartbeat filter on preselection
             alive_after = 0
 
-        c.execute(query, [NODE_ACTIVE] +
-                  list(chain.from_iterable(type_require)) +
-                  list(chain.from_iterable(type_reject)) +
-                  [POLICY_TASK_PADDING, start, POLICY_TASK_PADDING, stop,
-                   alive_after])
+        parameters = [NODE_ACTIVE] + list(chain.from_iterable(type_require)) + \
+                                     list(chain.from_iterable(type_reject)) 
+        if start != -1:
+            parameters += [POLICY_TASK_PADDING, start, POLICY_TASK_PADDING, stop]
+            parameters += [alive_after]
+        c.execute(query, parameters)
 
         noderows = c.fetchall()
         nodes = [x[0] for x in noderows if x[1] is not None]
@@ -1200,7 +1202,7 @@ SELECT DISTINCT * FROM (
         if start == LPQ_SCHEDULING:  # -1
             lpq = True
             stop = -1
-            intervals = (-1, duration)
+            intervals = [(-1, duration)]
 
         else:
             try:
@@ -1267,11 +1269,14 @@ SELECT DISTINCT * FROM (
 
                 if len(nodes) < nodecount:
                     self.db().rollback()
-                    utcstart = datetime.datetime.utcfromtimestamp(int(i[0])).isoformat()
-                    utcstop  = datetime.datetime.utcfromtimestamp(int(i[1])).isoformat()
-                    msg = "Only %s/%s %s are available during " \
-                          "interval %s (%s to %s)." % \
-                          (len(nodes), nodecount, node_or_pairs, inum + 1, utcstart, utcstop)
+                    if i[0] == -1:
+                        msg = "This node is not available for scheduling." 
+                    else:
+                        utcstart = datetime.datetime.utcfromtimestamp(int(i[0])).isoformat()
+                        utcstop  = datetime.datetime.utcfromtimestamp(int(i[1])).isoformat()
+                        msg = "Only %s/%s %s are available during " \
+                              "interval %s (%s to %s)." % \
+                              (len(nodes), nodecount, node_or_pairs, inum + 1, utcstart, utcstop)
                     data = {"code": ERROR_INSUFFICIENT_RESOURCES,
                             "available": len(nodes),
                             "requested": nodecount,
