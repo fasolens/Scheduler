@@ -489,9 +489,9 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         tasks["future"]=c.fetchone()[0]
         c.execute("SELECT count(*) as count FROM schedule WHERE start < ? AND stop > ?", (now,now))
         tasks["current"]=c.fetchone()[0]
-        c.execute("SELECT DISTINCT e.ownerid FROM schedule s, experiments e WHERE s.expid=e.id AND s.stop > ? - 604800 GROUP BY e.ownerid", (now,))
+        c.execute("SELECT DISTINCT o.name FROM schedule s, experiments e, owners o WHERE s.expid=e.id AND e.ownerid=o.id AND s.stop > ? - 604800 GROUP BY e.ownerid", (now,))
         distinct=c.fetchall()
-        tasks["distinct active users (7d)"]=len(distinct) if distinct is not None else 0;
+        tasks["distinct active users (7d)"]=[x[0] for x in distinct] if distinct is not None else 0;
         activity["schedules"]=tasks
         return activity
 
