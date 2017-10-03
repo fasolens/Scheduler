@@ -212,7 +212,16 @@ class SchedulingClient:
                 log.warning(
                     "Start hook for task %s returned non-zero (%s). Failed." %
                     (id, pro.returncode))
-                self.set_status(id, "failed; start hook exit code %i" % pro.returncode)
+                if pro.returncode == 10:
+                    self.set_status(id, "failed; container exited immediately.")
+                elif pro.returncode == 11:
+                    self.set_status(id, "failed; network namespace does not exist." )
+                elif pro.returncode == 12:
+                    self.set_status(id, "failed; container image not found.")
+                elif pro.returncode == 13:
+                    self.set_status(id, "failed; started into maintenance mode.")
+                else:
+                    self.set_status(id, "failed; start hook exit code %i." % pro.returncode)
 
         timestamp = sched['stop']
         now  = int(time.time())
