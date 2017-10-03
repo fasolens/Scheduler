@@ -220,6 +220,10 @@ class SchedulingClient:
                     self.set_status(id, "failed; container image not found.")
                 elif pro.returncode == 13:
                     self.set_status(id, "failed; started into maintenance mode.")
+                elif pro.returncode == 125:
+                    self.set_status(id, "failed; docker run command failed.")
+                elif pro.returncode == 127:
+                    self.set_status(id, "failed; docker run exit code 127: entry point not found?")
                 else:
                     self.set_status(id, "failed; start hook exit code %i." % pro.returncode)
 
