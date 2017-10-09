@@ -636,7 +636,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         if stop == 0:
             stop = period[1]
         if compact:
-            selectq = "SELECT nodeid, start, stop"
+            selectq = "SELECT s.nodeid, s.start, s.stop, e.ownerid"
         else:
             selectq = "SELECT *"
         pastq = (
@@ -659,7 +659,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                       "WHERE s.expid = t.id AND t.ownerid=?" +
                       pastq + orderq, (userid,))
         else:
-            c.execute(selectq + " FROM schedule s WHERE 1=1" + pastq + orderq)
+            c.execute(selectq + " FROM schedule s, experiments e WHERE s.expid=e.id " + pastq + orderq)
         taskrows = c.fetchall()
         tasks = [dict(x) for x in taskrows]
 
