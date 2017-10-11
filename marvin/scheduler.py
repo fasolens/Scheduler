@@ -325,7 +325,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                       " WHERE tag = ? AND type = ?)" % (columns, join),
                       (tag, type_))
         else:
-            c.execute("SELECT %s %s" % (columns, join))
+            c.execute("SELECT %s %s WHERE i.status != ?" % (columns, join), (DEVICE_HISTORIC,))
         noderows = [dict(x) for x in c.fetchall()]
         nodes = {}
         for row in noderows:
