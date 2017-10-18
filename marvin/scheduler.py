@@ -1216,9 +1216,16 @@ SELECT DISTINCT * FROM (
         until = int(opts.get('until', 0))
 
         num_intervals = len(intervals)
+        total_num_interfaces = nodecount # 1 interface per node
+        if pair:
+          total_num_interfaces *= 1.5    # 2+1 interface per node pair
+        elif head:
+          total_num_interfaces *= 2      # 2 interfaces per node
+        elif not head and not tail:
+          total_num_interfaces *= 3      # 3 interfaces per node (old APU1)
         total_time = duration * nodecount * num_intervals
         total_storage = req_storage * nodecount * num_intervals
-        total_traffic = req_traffic * nodecount * 3 * num_intervals
+        total_traffic = req_traffic * total_num_interfaces * num_intervals
 
         if u['quota_time'] < total_time:
             return None, "Insufficient time quota.", \
