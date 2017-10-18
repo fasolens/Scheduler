@@ -1223,6 +1223,7 @@ SELECT DISTINCT * FROM (
           total_num_interfaces *= 2      # 2 interfaces per node
         elif not head and not tail:
           total_num_interfaces *= 3      # 3 interfaces per node (old APU1)
+        # TODO: handle preselection of nodes
         total_time = duration * nodecount * num_intervals
         total_storage = req_storage * nodecount * num_intervals
         total_traffic = req_traffic * total_num_interfaces * num_intervals
