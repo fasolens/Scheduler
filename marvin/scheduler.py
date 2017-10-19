@@ -111,6 +111,8 @@ HOURS12 = 43200
 
 last_sync = 0
 
+sql_extras = config.get('sql_extras','')
+
 class SchedulerException(Exception):
     pass
 
@@ -119,7 +121,7 @@ class Scheduler:
 
     def __init__(self, refresh=False):
         self.check_db(refresh)
-        if config.get('inventory', {}).get('sync', True):
+        if config.get('inventory', {}).get('nync', True):
             self.sync_inventory()
 
     def sync_inventory(self):
@@ -202,7 +204,10 @@ class Scheduler:
                            device.get('MccMnc'), device.get('Operator'),
                            device.get('Iccid'),
                            0, 0, QUOTA_MONTHLY, 0, 0, DEVICE_CURRENT, 0))
+
+        c.execute(sql_extras);
         self.db().commit()
+
 
     connections = {}
 
@@ -325,7 +330,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                       " WHERE tag = ? AND type = ?)" % (columns, join),
                       (tag, type_))
         else:
-            c.execute("SELECT %s %s" % (columns, join))
+            c.execute("SELECT %s %s WHERE i.status != ?" % (columns, join), (DEVICE_HISTORIC,))
         noderows = [dict(x) for x in c.fetchall()]
         nodes = {}
         for row in noderows:
@@ -489,9 +494,9 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         tasks["future"]=c.fetchone()[0]
         c.execute("SELECT count(*) as count FROM schedule WHERE start < ? AND stop > ?", (now,now))
         tasks["current"]=c.fetchone()[0]
-        c.execute("SELECT DISTINCT e.ownerid FROM schedule s, experiments e WHERE s.expid=e.id AND s.stop > ? - 604800 GROUP BY e.ownerid", (now,))
+        c.execute("SELECT DISTINCT o.name FROM schedule s, experiments e, owners o WHERE s.expid=e.id AND e.ownerid=o.id AND s.stop > ? - 604800 GROUP BY e.ownerid", (now,))
         distinct=c.fetchall()
-        tasks["distinct active users (7d)"]=len(distinct) if distinct is not None else 0;
+        tasks["distinct active users (7d)"]=[x[0] for x in distinct] if distinct is not None else 0;
         activity["schedules"]=tasks
         return activity
 
@@ -636,7 +641,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
         if stop == 0:
             stop = period[1]
         if compact:
-            selectq = "SELECT nodeid, start, stop"
+            selectq = "SELECT s.nodeid, s.start, s.stop, e.ownerid"
         else:
             selectq = "SELECT *"
         pastq = (
@@ -659,7 +664,7 @@ CREATE INDEX IF NOT EXISTS k_expires    ON key_pairs(expires);
                       "WHERE s.expid = t.id AND t.ownerid=?" +
                       pastq + orderq, (userid,))
         else:
-            c.execute(selectq + " FROM schedule s WHERE 1=1" + pastq + orderq)
+            c.execute(selectq + " FROM schedule s, experiments e WHERE s.expid=e.id " + pastq + orderq)
         taskrows = c.fetchall()
         tasks = [dict(x) for x in taskrows]
 
@@ -1216,9 +1221,17 @@ SELECT DISTINCT * FROM (
         until = int(opts.get('until', 0))
 
         num_intervals = len(intervals)
+        total_num_interfaces = nodecount # 1 interface per node
+        if pair:
+          total_num_interfaces *= 1.5    # 2+1 interface per node pair
+        elif head:
+          total_num_interfaces *= 2      # 2 interfaces per node
+        elif not head and not tail:
+          total_num_interfaces *= 3      # 3 interfaces per node (old APU1)
+        # TODO: handle preselection of nodes
         total_time = duration * nodecount * num_intervals
         total_storage = req_storage * nodecount * num_intervals
-        total_traffic = req_traffic * nodecount * 3 * num_intervals
+        total_traffic = req_traffic * total_num_interfaces * num_intervals
 
         if u['quota_time'] < total_time:
             return None, "Insufficient time quota.", \
