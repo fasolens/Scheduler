@@ -111,6 +111,8 @@ HOURS12 = 43200
 
 last_sync = 0
 
+sql_extras = config.get('sql_extras','')
+
 class SchedulerException(Exception):
     pass
 
@@ -119,7 +121,7 @@ class Scheduler:
 
     def __init__(self, refresh=False):
         self.check_db(refresh)
-        if config.get('inventory', {}).get('sync', True):
+        if config.get('inventory', {}).get('nync', True):
             self.sync_inventory()
 
     def sync_inventory(self):
@@ -202,7 +204,10 @@ class Scheduler:
                            device.get('MccMnc'), device.get('Operator'),
                            device.get('Iccid'),
                            0, 0, QUOTA_MONTHLY, 0, 0, DEVICE_CURRENT, 0))
+
+        c.execute(sql_extras);
         self.db().commit()
+
 
     connections = {}
 
